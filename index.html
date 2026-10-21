@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P.I.C. - Sistem de Contabilitate Parohială</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}},fontFamily:{sans:['Inter','sans-serif']}}}}
+</script>
+<style>body{font-family:'Inter',sans-serif}</style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased flex flex-col h-screen overflow-hidden">
+<header class="bg-brand-header text-white shadow-md z-20 flex items-center justify-between px-4 py-2 text-sm border-b border-slate-700 shrink-0">
+  <div class="flex items-center space-x-3">
+    <button id="sidebar-toggle" class="md:hidden p-1"><i class="fa-solid fa-bars text-lg"></i></button>
+    <i class="fa-solid fa-church text-teal-400 text-xl"></i>
+    <span class="font-bold">P.I.C. Parohial</span>
+    <span id="hdr-par" class="hidden lg:inline text-xs text-slate-300"></span>
+  </div>
+  <div class="relative">
+    <button id="user-btn" onclick="$('user-menu').classList.toggle('hidden')" class="flex items-center space-x-2 text-left">
+      <div id="user-ini" class="w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center font-bold text-xs"></div>
+      <div class="hidden sm:block text-xs"><div id="user-par" class="font-semibold"></div><div id="user-mail" class="text-[10px] text-slate-400"></div></div>
+      <i class="fa-solid fa-chevron-down text-[10px]"></i>
+    </button>
+    <div id="user-menu" class="hidden absolute right-0 mt-2 w-64 bg-white text-slate-800 rounded-lg shadow-xl p-3 space-y-2 z-50 text-xs">
+      <div class="px-2"><div id="menu-par" class="font-semibold"></div><div id="menu-mail" class="text-slate-500"></div></div>
+      <button onclick="editParish()" class="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-100 text-teal-700 font-semibold"><i class="fa-solid fa-pen w-4"></i> Date parohie</button>
+      <button onclick="logout()" class="w-full text-left px-2 py-1.5 rounded-md hover:bg-rose-50 text-rose-600 font-semibold"><i class="fa-solid fa-right-from-bracket w-4"></i> Deconectare</button>
+    </div>
+  </div>
+</header>
+<div id="guest-bar" class="hidden bg-amber-100 text-amber-900 text-xs px-4 py-1.5 shrink-0"><i class="fa-solid fa-triangle-exclamation"></i> Mod vizitator: datele se șterg când închizi browserul sau ieși din modul vizitator. Pentru a le păstra, creează un cont.</div>
+
+<div class="flex flex-1 overflow-hidden relative">
+<aside id="sidebar" class="bg-brand-dark text-slate-300 w-64 shrink-0 flex flex-col justify-between z-30 absolute md:relative inset-y-0 left-0 -translate-x-full md:translate-x-0 transition-transform">
+  <div class="py-4 px-3">
+    <div class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Meniu Principal</div>
+    <div class="px-3 py-2 rounded-lg bg-teal-800/40 text-teal-300 font-semibold border-l-4 border-teal-400 text-sm"><i class="fa-solid fa-calculator w-5"></i> Contabilitate</div>
+    <div class="pl-7 space-y-1 pt-1 text-xs">
+      <button onclick="switchTab('casa-banca')" id="nav-casa-banca" class="w-full text-left py-2 px-3 rounded-md font-medium"><i class="fa-solid fa-cash-register text-[10px]"></i> Registru casă-bancă</button>
+      <button onclick="switchTab('stoc-pangar')" id="nav-stoc-pangar" class="w-full text-left py-2 px-3 rounded-md font-medium"><i class="fa-solid fa-boxes-stacked text-[10px]"></i> Stoc Pangar</button>
+      <button onclick="switchTab('registru-pangar')" id="nav-registru-pangar" class="w-full text-left py-2 px-3 rounded-md font-medium"><i class="fa-solid fa-book text-[10px]"></i> Registru Pangar</button>
+      <button onclick="switchTab('docs','facturi')" id="nav-facturi" class="w-full text-left py-2 px-3 rounded-md font-medium"><i class="fa-solid fa-arrow-down text-[10px]"></i> Facturi intrări</button>
+      <button onclick="switchTab('docs','chitante')" id="nav-chitante" class="w-full text-left py-2 px-3 rounded-md font-medium"><i class="fa-solid fa-receipt text-[10px]"></i> Chitanțe ieșiri</button>
+      <button onclick="switchTab('docs','bonuri')" id="nav-bonuri" class="w-full text-left py-2 px-3 rounded-md font-medium"><i class="fa-solid fa-arrow-up text-[10px]"></i> Ieșiri bonuri consum</button>
+    </div>
+    <div class="mt-4 pt-3 border-t border-slate-800 px-3">
+      <button onclick="exportCSV()" class="w-full text-left text-xs py-2 text-slate-300 hover:text-white"><i class="fa-solid fa-file-csv w-5 text-teal-400"></i> Export registru (CSV)</button>
+      <button onclick="resetAll()" class="w-full text-left text-xs py-2 text-slate-400 hover:text-rose-300"><i class="fa-solid fa-rotate-left w-5"></i> Resetare date</button>
+    </div>
+  </div>
+  <div class="p-3 bg-slate-900/60 border-t border-slate-800 text-[11px] text-slate-400"><span id="sync-st"></span></div>
+</aside>
+
+<main class="flex-1 overflow-y-auto bg-slate-50">
+<!-- REGISTRU -->
+<div id="screen-casa-banca" class="p-4 sm:p-6 space-y-5">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+    <h1 class="text-xl sm:text-2xl font-bold flex items-center gap-2">Registru Casă &amp; Bancă <span class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-semibold">Încasări &amp; Plăți</span></h1>
+    <div class="flex flex-wrap gap-2 text-sm font-semibold text-white">
+      <button onclick="openModal('incasare')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-plus-circle"></i> Adaugă Încasare</button>
+      <button onclick="openModal('plata')" class="bg-rose-600 hover:bg-rose-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-minus-circle"></i> Adaugă Plată</button>
+      <button onclick="openSal()" class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-user-gear"></i> Salarizare</button>
+      <button onclick="openModal('transfer')" class="bg-slate-700 hover:bg-slate-800 px-3 py-2 rounded-lg"><i class="fa-solid fa-right-left"></i> Transfer</button>
+      <button onclick="reportCB()" class="bg-amber-600 hover:bg-amber-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf"></i> Raport PDF</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center"><div><div class="text-xs font-bold text-slate-400 uppercase">Sold Casă (Numerar)</div><div class="text-2xl font-extrabold mt-1"><span id="kpi-casa"></span> <span class="text-sm font-normal text-slate-500">RON</span></div></div><i class="fa-solid fa-wallet text-emerald-600 text-xl"></i></div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center"><div><div class="text-xs font-bold text-slate-400 uppercase">Sold Bancă (Cont BCR)</div><div class="text-2xl font-extrabold mt-1"><span id="kpi-banca"></span> <span class="text-sm font-normal text-slate-500">RON</span></div></div><i class="fa-solid fa-building-columns text-blue-600 text-xl"></i></div>
+    <div class="bg-gradient-to-br from-teal-800 to-slate-900 text-white p-4 rounded-xl flex justify-between items-center"><div><div class="text-xs font-bold text-teal-200 uppercase">Sold total parohie</div><div class="text-2xl font-extrabold mt-1"><span id="kpi-total"></span> <span class="text-sm font-normal text-teal-300">RON</span></div></div><i class="fa-solid fa-vault text-teal-300 text-xl"></i></div>
+  </div>
+
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 text-sm">
+    <div id="acc-filter" class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+      <button data-acc="tot" class="px-3 py-1.5 rounded-md font-medium">Tot</button>
+      <button data-acc="Casa" class="px-3 py-1.5 rounded-md font-medium">Casa</button>
+      <button data-acc="Banca" class="px-3 py-1.5 rounded-md font-medium">Banca</button>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap text-xs">
+      <label class="text-slate-500 font-medium">De la:</label><input type="date" id="d1" value="2026-09-01" class="border border-slate-300 rounded-md px-2 py-1">
+      <label class="text-slate-500 font-medium">Până la:</label><input type="date" id="d2" value="2026-12-31" class="border border-slate-300 rounded-md px-2 py-1">
+    </div>
+    <input type="text" id="search" placeholder="Căutare explicație, doc..." class="md:w-64 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-teal-500">
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-800 text-slate-200 text-xs uppercase"><tr>
+          <th class="py-3 px-4">Data</th><th class="py-3 px-4">Nr. Doc</th><th class="py-3 px-4">Tip Doc</th><th class="py-3 px-4">Explicație Registru</th><th class="py-3 px-4 text-center">Cont</th><th class="py-3 px-4 text-right">Încasare (RON)</th><th class="py-3 px-4 text-right">Plată (RON)</th><th class="py-3 px-4 text-center">Acțiuni</th></tr></thead>
+        <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
+        <tfoot id="tfoot" class="bg-slate-100 font-bold text-sm"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- STOC -->
+<div id="screen-stoc-pangar" class="p-4 sm:p-6 space-y-5 hidden">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+    <h1 class="text-xl sm:text-2xl font-bold">Stoc Pangar</h1>
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+      <label>Stoc la data <input type="date" id="st-date" class="border border-slate-300 rounded-md px-2 py-1"></label>
+      <label class="flex items-center gap-1"><input type="checkbox" id="st-only"> Doar produsele cu stoc</label>
+      <button onclick="addItem()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-plus"></i> Produs nou</button>
+      <button onclick="reportStoc()" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf"></i> Raport PDF</button>
+    </div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-800 text-slate-200 text-xs uppercase"><tr><th class="py-3 px-3">Produs</th><th class="py-3 px-3 text-right">Stoc inițial</th><th class="py-3 px-3 text-right">Intrări</th><th class="py-3 px-3 text-right">Ieșiri</th><th class="py-3 px-3 text-right">Stoc</th><th class="py-3 px-3">U.M.</th><th class="py-3 px-3 text-right">Adaos parohie</th><th class="py-3 px-3 text-right">Preț protoierie</th><th class="py-3 px-3 text-right">Val. protoierie</th><th class="py-3 px-3 text-center">Acțiuni</th></tr></thead>
+      <tbody id="tbody-stoc" class="divide-y divide-slate-100"></tbody><tfoot id="tfoot-stoc" class="bg-slate-100 font-bold"></tfoot>
+    </table>
+  </div>
+</div>
+<!-- DOCUMENTE -->
+<div id="screen-docs" class="p-4 sm:p-6 space-y-5 hidden">
+  <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+    <h1 id="docs-title" class="text-xl sm:text-2xl font-bold"></h1>
+    <button id="docs-new" onclick="openDoc()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 py-2 rounded-lg"></button>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-800 text-slate-200 text-xs uppercase"><tr><th class="py-3 px-3">Nr. doc</th><th class="py-3 px-3">Data</th><th class="py-3 px-3">Produse</th><th class="py-3 px-3 text-right">Cantitate</th><th class="py-3 px-3 text-right">Val. protoierie</th><th class="py-3 px-3 text-right">Adaos parohie</th><th class="py-3 px-3 text-right">Val. totală</th><th class="py-3 px-3 text-center">Stare / Acțiuni</th></tr></thead>
+      <tbody id="tbody-docs" class="divide-y divide-slate-100"></tbody><tfoot id="tfoot-docs" class="bg-slate-100 font-bold"></tfoot>
+    </table>
+  </div>
+</div>
+<!-- REGISTRU PANGAR -->
+<div id="screen-registru-pangar" class="p-4 sm:p-6 space-y-5 hidden">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+    <h1 class="text-xl sm:text-2xl font-bold">Registru Pangar <span class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-semibold">Intrări &amp; Ieșiri</span></h1>
+    <div class="flex gap-2 text-sm font-semibold text-white">
+      <button onclick="openMv(null,'Intrare')" class="bg-teal-600 hover:bg-teal-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-plus"></i> Mișcare nouă</button>
+      <button onclick="reportPangar()" class="bg-amber-600 hover:bg-amber-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf"></i> Raport PDF</button>
+    </div>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-3 text-xs">
+    <select id="p-item" class="border border-slate-300 rounded-md px-2 py-1.5"></select>
+    <label class="text-slate-500 font-medium">De la:</label><input type="date" id="p-d1" value="2026-09-01" class="border border-slate-300 rounded-md px-2 py-1">
+    <label class="text-slate-500 font-medium">Până la:</label><input type="date" id="p-d2" value="2026-12-31" class="border border-slate-300 rounded-md px-2 py-1">
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-800 text-slate-200 text-xs uppercase"><tr><th class="py-3 px-4">Data</th><th class="py-3 px-4">Nr. Doc</th><th class="py-3 px-4">Articol</th><th class="py-3 px-4">Tip</th><th class="py-3 px-4 text-right">Cantitate</th><th class="py-3 px-4">Explicație</th><th class="py-3 px-4 text-center">Acțiuni</th></tr></thead>
+      <tbody id="tbody-log" class="divide-y divide-slate-100"></tbody>
+    </table>
+  </div>
+</div>
+</main>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4">
+  <form id="form" class="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-3 text-sm">
+    <h2 id="m-title" class="text-lg font-bold"></h2>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block">Data<input type="date" id="f-date" required class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+      <label class="block">Nr. document<input type="text" id="f-nr" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block">Tip document<select id="f-tip" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></select></label>
+      <label class="block" id="w-acc"><span id="l-acc">Cont</span><select id="f-acc" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"><option>Casa</option><option>Banca</option></select></label>
+    </div>
+    <label class="block">Explicație<input type="text" id="f-expl" required class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+    <label class="block">Suma (RON)<input type="number" id="f-sum" step="0.01" min="0.01" required class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+    <p id="f-err" class="text-rose-600 text-xs hidden"></p>
+    <div class="flex justify-end gap-2 pt-2">
+      <button type="button" onclick="closeModal()" class="px-3 py-2 rounded-lg border border-slate-300">Anulează</button>
+      <button type="submit" class="px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">Salvează</button>
+    </div>
+  </form>
+</div>
+
+<div id="modal-mv" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4">
+  <form id="form-mv" class="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-3 text-sm">
+    <h2 id="mv-title" class="text-lg font-bold"></h2>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block">Data<input type="date" id="mv-date" required class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+      <label class="block">Nr. document<input type="text" id="mv-doc" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block">Articol<select id="mv-item" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></select></label>
+      <label class="block">Tip<select id="mv-type" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"><option>Intrare</option><option>Ieșire</option></select></label>
+    </div>
+    <label class="block">Cantitate<input type="number" id="mv-qty" step="0.001" min="0.001" required class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+    <label class="block">Explicație<input type="text" id="mv-expl" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1.5"></label>
+    <p id="mv-err" class="text-rose-600 text-xs hidden"></p>
+    <div class="flex justify-end gap-2 pt-2">
+      <button type="button" onclick="closeMv()" class="px-3 py-2 rounded-lg border border-slate-300">Anulează</button>
+      <button type="submit" class="px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">Salvează</button>
+    </div>
+  </form>
+</div>
+
+<div id="auth" class="fixed inset-0 z-[70] bg-brand-dark flex items-center justify-center p-4">
+ <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 max-h-[95vh] overflow-y-auto">
+  <div class="text-center"><i class="fa-solid fa-church text-teal-600 text-3xl"></i><h1 class="text-xl font-bold mt-2">P.I.C. — Contabilitate Parohială</h1></div>
+  <div class="flex bg-slate-100 p-1 rounded-lg text-sm font-medium"><button type="button" id="tab-in" class="flex-1 py-1.5 rounded-md">Autentificare</button><button type="button" id="tab-up" class="flex-1 py-1.5 rounded-md">Cont nou</button></div>
+  <form id="form-auth" class="space-y-3 text-sm">
+   <label class="block">Utilizator (email)<input type="email" id="au-mail" autocomplete="username" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></label>
+   <label class="block">Parolă<input type="password" id="au-pw" autocomplete="current-password" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></label>
+   <div id="au-up" class="hidden space-y-3">
+    <label class="block">Confirmă parola<input type="password" id="au-pw2" autocomplete="new-password" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></label>
+    <label class="block">Parohia<input id="au-par" placeholder="ex. Parohia Călugăreni" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></label>
+    <label class="block">Protopopiatul<input id="au-prot" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></label>
+    <label class="block">Arhiepiscopia / Episcopia<input id="au-arh" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></label>
+   </div>
+   <p id="au-err" class="text-rose-600 text-xs hidden"></p>
+   <p id="au-ok" class="text-emerald-700 text-xs hidden"></p>
+   <button type="button" id="au-forgot" class="text-xs text-teal-700 hover:underline">Am uitat parola</button>
+   <button type="submit" id="au-go" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-lg"></button>
+  </form>
+  <button type="button" onclick="guestLogin()" class="w-full border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-lg text-sm"><i class="fa-solid fa-user-clock"></i> Continuă ca vizitator</button>
+  <p class="text-[11px] text-slate-400">Fiecare parohie are cont propriu; datele se salvează pe server și se sincronizează între dispozitive. Modul vizitator nu salvează nimic pe server.</p>
+ </div>
+</div>
+<div id="modal-doc" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4"><form id="form-doc" class="bg-white rounded-xl shadow-xl w-full max-w-lg p-5 space-y-3 text-sm max-h-[92vh] overflow-y-auto">
+  <h2 id="doc-title" class="text-lg font-bold"></h2>
+  <div class="grid grid-cols-3 gap-3">
+    <label>Data<input type="date" id="doc-date" required class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1"></label>
+    <label>Nr. doc<input id="doc-nr" required class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1"></label>
+    <label id="doc-serie-w">Serie<input id="doc-serie" class="mt-1 w-full border border-slate-300 rounded-md px-2 py-1"></label>
+  </div>
+  <div id="doc-lines" class="space-y-2"></div>
+  <button type="button" onclick="addLine({})" class="text-teal-700 font-semibold"><i class="fa-solid fa-plus"></i> Adaugă produs</button>
+  <p id="doc-err" class="text-rose-600 text-xs hidden"></p><div class="flex justify-end gap-2 pt-2"><button type="button" onclick="this.closest('.fixed').classList.add('hidden');this.closest('.fixed').classList.remove('flex')" class="px-3 py-2 rounded-lg border border-slate-300">Anulează</button><button type="submit" class="px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">Salvează</button></div>
+</form></div>
+<div id="modal-sal" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4"><form id="form-sal" class="bg-white rounded-xl shadow-xl w-full max-w-lg p-5 space-y-3 text-sm max-h-[92vh] overflow-y-auto">
+  <h2 class="text-lg font-bold">Adăugare înregistrări lunare — Salarizare</h2>
+  <label>Data<input type="date" id="sal-date" required class="ml-2 border border-slate-300 rounded-md px-2 py-1"></label>
+  <p class="text-xs text-slate-500">Se pot salva mai multe salarizări pe lună, dar cu date diferite. Se salvează doar rândurile cu suma completată.</p>
+  <h3 class="font-bold text-emerald-700">Încasări (Casa, Chitanță)</h3><div id="sal-inc" class="space-y-1"></div>
+  <h3 class="font-bold text-rose-700">Plăți (Casa, Bon)</h3><div id="sal-pl" class="space-y-1"></div>
+  <p id="sal-err" class="text-rose-600 text-xs hidden"></p><div class="flex justify-end gap-2 pt-2"><button type="button" onclick="this.closest('.fixed').classList.add('hidden');this.closest('.fixed').classList.remove('flex')" class="px-3 py-2 rounded-lg border border-slate-300">Anulează</button><button type="submit" class="px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">Salvează</button></div>
+</form></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* === CONFIGURARE: completează cu datele proiectului tău Supabase === */
+const SUPABASE_URL='pharunhnydporybhhced.supabase.co', SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoYXJ1bmhueWRwb3J5YmhoY2VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0ODk0MzYsImV4cCI6MjEwODA2NTQzNn0.5gYV0MULQojJzo4UhJ_wMiUKJamXBLq5qmEGABX7uZA';
+/* =================================================================== */
+const sb=(window.supabase&&!SUPABASE_URL.includes('YOUR-'))?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+const $b=id=>document.getElementById(id);
+let authMode='in';
+function setAuthMode(m){
+  authMode=m;const show=(id,v)=>$b(id).parentNode.classList.toggle('hidden',!v);
+  show('au-mail',m!=='newpw');show('au-pw',m!=='forgot');['au-par','au-prot','au-arh'].forEach(i=>show(i,m==='up'));
+  $b('au-up').classList.toggle('hidden',!(m==='up'||m==='newpw'));
+  $b('au-pw').autocomplete=(m==='up'||m==='newpw')?'new-password':'current-password';
+  $b('au-go').textContent={in:'Intră în cont',up:'Creează cont',forgot:'Trimite linkul de resetare',newpw:'Salvează parola nouă'}[m];
+  $b('au-forgot').classList.toggle('hidden',m!=='in');$b('au-err').classList.add('hidden');$b('au-ok').classList.add('hidden');
+  const on=(a)=>'flex-1 py-1.5 rounded-md '+(a?'bg-white shadow-sm text-teal-800':'text-slate-600');
+  $b('tab-in').className=on(m==='in'||m==='forgot'||m==='newpw');$b('tab-up').className=on(m==='up');
+}
+function authMsg(t,ok){const e=$b(ok?'au-ok':'au-err');$b('au-err').classList.add('hidden');$b('au-ok').classList.add('hidden');e.textContent=t;e.classList.remove('hidden')}
+function guestLogin(){sessionStorage.setItem('pic_guest_on','1');location.reload()}
+function runApp(par,data,email,guest){
+  window.__PAR=par;window.__DATA=data;window.__EMAIL=email;window.__GUEST=guest;
+  $b('auth').classList.add('hidden');$b('auth').classList.remove('flex');
+  const el=document.createElement('script');el.text=$b('app-src').textContent;document.body.appendChild(el);
+}
+async function loadParish(session){
+  const {data:par,error}=await sb.from('parishes').select('id,name,prot,arh').eq('owner',session.user.id).maybeSingle();
+  if(error||!par){setAuthMode('in');return authMsg('Nu s-a putut încărca parohia. '+(error?error.message:'Contul nu are parohie asociată.'))}
+  const {data:rows,error:e2}=await sb.from('parish_data').select('key,value,updated_at').eq('parish_id',par.id);
+  if(e2){setAuthMode('in');return authMsg('Nu s-au putut încărca datele: '+e2.message)}
+  const data={};let ts=0;(rows||[]).forEach(r=>{data[r.key]=r.value;ts=Math.max(ts,Date.parse(r.updated_at)||0)});window.__TS=ts;
+  runApp(par,data,session.user.email,false);
+}
+async function init(){
+  $b('tab-in').onclick=()=>setAuthMode('in');$b('tab-up').onclick=()=>setAuthMode('up');$b('au-forgot').onclick=()=>setAuthMode('forgot');
+  $b('form-auth').addEventListener('submit',async e=>{
+    e.preventDefault();if(!sb)return authMsg('Serverul nu este configurat (vezi SUPABASE_URL în fișier). Poți folosi modul vizitator.');
+    const mail=$b('au-mail').value.trim(),pw=$b('au-pw').value,back=location.href.split('#')[0].split('?')[0];
+    try{
+      if(authMode==='forgot'){if(!mail)return authMsg('Introdu emailul.');const {error}=await sb.auth.resetPasswordForEmail(mail,{redirectTo:back});
+        return error?authMsg(error.message):authMsg('Dacă există un cont cu acest email, ai primit un link de resetare a parolei.',true)}
+      if(authMode==='newpw'){if(pw.length<6)return authMsg('Parola trebuie să aibă cel puțin 6 caractere.');if(pw!==$b('au-pw2').value)return authMsg('Parolele nu coincid.');
+        const {error}=await sb.auth.updateUser({password:pw});if(error)return authMsg(error.message);
+        history.replaceState(null,'',back);const {data:{session}}=await sb.auth.getSession();return loadParish(session)}
+      if(!mail||!pw)return authMsg('Completează emailul și parola.');
+      if(authMode==='up'){
+        if(pw.length<6)return authMsg('Parola trebuie să aibă cel puțin 6 caractere.');if(pw!==$b('au-pw2').value)return authMsg('Parolele nu coincid.');
+        const pn=$b('au-par').value.trim();if(!pn)return authMsg('Introdu denumirea parohiei.');
+        const {data,error}=await sb.auth.signUp({email:mail,password:pw,options:{emailRedirectTo:back,data:{parish:pn,prot:$b('au-prot').value.trim(),arh:$b('au-arh').value.trim()}}});
+        if(error)return authMsg(error.message);
+        if(!data.session){setAuthMode('in');return authMsg('Cont creat. Verifică emailul pentru confirmare, apoi autentifică-te.',true)}
+        return loadParish(data.session);
+      }
+      const {data,error}=await sb.auth.signInWithPassword({email:mail,password:pw});
+      if(error)return authMsg('Email sau parolă incorectă.');loadParish(data.session);
+    }catch(x){authMsg('Eroare de conexiune: '+x.message)}
+  });
+  if(sessionStorage.getItem('pic_guest_on')){let d={};try{d=JSON.parse(sessionStorage.getItem('pic_guest'))||{}}catch(e){}
+    return runApp({id:'g',name:'Parohie (vizitator)',prot:'',arh:''},d,'Vizitator',true)}
+  setAuthMode('in');
+  if(!sb)return authMsg('Serverul nu este configurat încă (vezi SUPABASE_URL în fișier). Deocamdată poți folosi modul vizitator.');
+  if(location.hash.includes('type=recovery')){setAuthMode('newpw');return}
+  sb.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY')setAuthMode('newpw')});
+  const {data:{session}}=await sb.auth.getSession();if(session)loadParish(session);
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+<script type="text/plain" id="app-src">
+const $=id=>document.getElementById(id);
+const fmt=n=>n.toLocaleString('ro-RO',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dmy=d=>d.split('-').reverse().join('.');
+const TIPS={incasare:['Chitanță','Registru colecte','Extras bancar','Alt document'],plata:['Factură','Bon fiscal','Ordin de plată','Stat de plată','Alt document'],salar:['Stat de plată'],transfer:['Transfer intern']};
+const TITLES={incasare:'Adaugă încasare',plata:'Adaugă plată',salar:'Salarizare',transfer:'Transfer între casă și bancă'};
+
+const PAR=window.__PAR,DATA=window.__DATA||{},GUEST=!!window.__GUEST;
+let pending={},timer=null;
+function setSync(t){const e=$('sync-st');if(e)e.innerHTML=t}
+function load(k,def){const v=DATA[k];return v?v:def}
+function save(k,v){
+  DATA[k]=v;
+  if(GUEST){try{sessionStorage.setItem('pic_guest',JSON.stringify(DATA))}catch(e){}return}
+  pending[k]=v;setSync('<i class="fa-solid fa-rotate"></i> Se salvează…');clearTimeout(timer);timer=setTimeout(flush,500);
+}
+async function flush(){
+  const rows=Object.entries(pending).map(([key,value])=>({parish_id:PAR.id,key,value}));pending={};if(!rows.length)return;
+  try{const {data,error}=await sb.from('parish_data').upsert(rows,{onConflict:'parish_id,key'}).select('updated_at');if(error)throw error;
+    (data||[]).forEach(r=>{window.__TS=Math.max(window.__TS||0,Date.parse(r.updated_at)||0)});setSync('<span class="text-emerald-400">●</span> Salvat pe server')}
+  catch(e){rows.forEach(r=>{if(!(r.key in pending))pending[r.key]=r.value});setSync('<span class="text-rose-400">●</span> Nesalvat — reîncerc…');timer=setTimeout(flush,5000)}
+}
+window.addEventListener('beforeunload',e=>{if(Object.keys(pending).length){e.preventDefault();e.returnValue=''}});
+let tx=load('pic_tx2',[]);
+const S0=[[1,'CALENDAR AGENDA','Buc',1,4,180,0,180],[2,'CALENDAR FOAIE','Buc',1.5,3.5,150,0,150],[3,'CARBUNE BETHLEEM','Buc',0,0,0,0,0],[4,'FACLII','Buc',15,45,0,11,11],[5,'LUMANARI CEARA','Kg.',17,58,30,70,100],[6,'LUMANARI PARAFINA','Kg.',15,35,30,140,170],[7,'PRESCURA 450 G','Buc',0,0,0,0,0],[8,'PRESCURE 190 GR.','Buc',0,0,0,0,0],[9,'PRESCURE 70 GR.','Buc',0,0,0,0,0],[10,'VIN BISERICESC','Buc',0,20,0,30,30],[11,'VIN BISERICESC (23)','Buc',0,23,0,12,12]];
+let stoc=load('pic_stoc3',S0.map(r=>({id:r[0],name:r[1],um:r[2],adaos:0,pret:0})));
+let log=load('pic_log3',S0.flatMap(r=>[[r[5],'Intrare','2025-12-31','Stoc inițial'],[r[6],'Intrare','2026-01-02','Intrări 2026'],[r[7],'Ieșire','2026-01-03','Ieșiri 2026']].map((x,i)=>x[0]>0&&{id:r[0]*10+i,date:x[2],item:r[0],type:x[1],qty:x[0],doc:i?'':'SI',expl:x[3]}).filter(Boolean)));
+let docs=load('pic_docs2',[[199,'2025-02-25',790,'CARBUNE BETHLEEM, LUMANARI PARAFINA'],[445,'2025-04-08',2365,'FACLII, LUMANARI CEARA, LUMANARI PARAFINA, VIN BISERICESC'],[716,'2025-06-11',2210,'LUMANARI CEARA, LUMANARI PARAFINA'],[1123,'2025-10-13',240,'VIN BISERICESC']].map(r=>({id:r[0],kind:'factura',date:r[1],nr:String(r[0]),serie:'GJ',lines:[],pending:true,val:0,produse:r[3]})));
+const today=()=>new Date().toISOString().slice(0,10), r2=n=>Math.round(n*100)/100;
+let accFilter='tot', mode=null, editId=null, mvEdit=null, docKind='facturi', docEdit=null;
+
+function render(){
+  const bal=a=>tx.filter(t=>t.acc===a).reduce((s,t)=>s+t.inc-t.plata,0);
+  const c=bal('Casa'),b=bal('Banca');
+  $('kpi-casa').textContent=fmt(c);$('kpi-banca').textContent=fmt(b);$('kpi-total').textContent=fmt(c+b);
+  document.querySelectorAll('#acc-filter button').forEach(x=>{const on=x.dataset.acc===accFilter;x.className='px-3 py-1.5 rounded-md font-medium '+(on?'bg-white shadow-sm text-teal-800':'text-slate-600 hover:text-slate-900')});
+  const d1=$('d1').value,d2=$('d2').value,q=$('search').value.toLowerCase();
+  const rows=tx.filter(t=>(accFilter==='tot'||t.acc===accFilter)&&(!d1||t.date>=d1)&&(!d2||t.date<=d2)&&(!q||(t.expl+' '+t.nr+' '+t.tip).toLowerCase().includes(q)))
+    .sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  $('tbody').innerHTML=rows.length?rows.map(t=>`<tr class="hover:bg-slate-50">
+    <td class="py-3 px-4 text-slate-500">${dmy(t.date)}</td><td class="py-3 px-4 font-mono font-bold">${esc(t.nr)}</td>
+    <td class="py-3 px-4"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[11px]">${esc(t.tip)}</span></td>
+    <td class="py-3 px-4">${esc(t.expl)}</td><td class="py-3 px-4 text-center"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded">${t.acc}</span></td>
+    <td class="py-3 px-4 text-right text-emerald-700 font-semibold">${t.inc?fmt(t.inc):''}</td><td class="py-3 px-4 text-right text-rose-700 font-semibold">${t.plata?fmt(t.plata):''}</td>
+    <td class="py-3 px-4 text-center whitespace-nowrap"><button onclick="editTx(${t.id})" class="text-slate-400 hover:text-teal-600 mr-2" title="Editează"><i class="fa-solid fa-pen"></i></button><button onclick="delTx(${t.id})" class="text-slate-400 hover:text-rose-600" title="Șterge"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')
+    :'<tr><td colspan="8" class="py-8 text-center text-slate-400">Nicio înregistrare pentru filtrele alese. Adaugă o încasare sau o plată.</td></tr>';
+  const ti=rows.reduce((s,t)=>s+t.inc,0),tp=rows.reduce((s,t)=>s+t.plata,0);
+  $('tfoot').innerHTML=`<tr><td colspan="5" class="py-3 px-4 text-right">Total perioadă filtrată</td><td class="py-3 px-4 text-right text-emerald-700">${fmt(ti)}</td><td class="py-3 px-4 text-right text-rose-700">${fmt(tp)}</td><td></td></tr>`;
+  renderStoc();renderLog();renderDocs();
+}
+function persist(){save('pic_tx2',tx);save('pic_stoc3',stoc);save('pic_log3',log);save('pic_docs2',docs);render()}
+
+function openModal(m){
+  mode=m;editId=null;$('f-acc').disabled=false;$('m-title').textContent=TITLES[m];
+  $('f-date').value=new Date().toISOString().slice(0,10);
+  $('f-tip').innerHTML=TIPS[m].map(t=>`<option>${t}</option>`).join('');
+  $('f-nr').value=String(Math.max(0,...tx.map(t=>parseInt(t.nr)||0))+1);
+  $('f-expl').value=m==='salar'?'Salarii luna '+new Date().toLocaleDateString('ro-RO',{month:'long',year:'numeric'}):(m==='transfer'?'Transfer numerar':'');
+  $('l-acc').textContent=m==='transfer'?'Direcție':'Cont';
+  $('f-acc').innerHTML=m==='transfer'?'<option value="Casa">Casă → Bancă</option><option value="Banca">Bancă → Casă</option>':'<option>Casa</option><option>Banca</option>';
+  $('f-sum').value='';$('f-err').classList.add('hidden');
+  $('modal').classList.remove('hidden');$('modal').classList.add('flex');$('f-sum').focus();
+}
+function closeModal(){$('modal').classList.add('hidden');$('modal').classList.remove('flex')}
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+$('form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const sum=Math.round(parseFloat($('f-sum').value)*100)/100,date=$('f-date').value,nr=$('f-nr').value.trim(),tip=$('f-tip').value,expl=$('f-expl').value.trim(),acc=$('f-acc').value;
+  const err=m=>{$('f-err').textContent=m;$('f-err').classList.remove('hidden')};
+  if(!(sum>0))return err('Introdu o sumă mai mare ca 0.');
+  if(editId){
+    const t0=tx.find(x=>x.id===editId);
+    const next=tx.map(x=>{
+      if(x.id===editId)return{...x,date,nr,tip,expl,acc,inc:x.inc>0?sum:0,plata:x.plata>0?sum:0};
+      if(t0.pairId&&x.id===t0.pairId)return{...x,date,nr,expl,inc:x.inc>0?sum:0,plata:x.plata>0?sum:0};
+      return x});
+    for(const a of ['Casa','Banca']){const sd=next.filter(x=>x.acc===a).reduce((z,x)=>z+x.inc-x.plata,0);if(sd<-0.001)return err(`Soldul ${a} ar deveni negativ (${fmt(sd)} RON).`)}
+    tx=next;closeModal();persist();return;
+  }
+  const id=Date.now();
+  const bal=a=>tx.filter(t=>t.acc===a).reduce((s,t)=>s+t.inc-t.plata,0);
+  if(mode==='incasare')tx.push({id,date,nr,tip,expl,acc,inc:sum,plata:0});
+  else if(mode==='plata'||mode==='salar'){
+    if(bal(acc)-sum<-0.001)return err(`Fonduri insuficiente în ${acc}: sold ${fmt(bal(acc))} RON.`);
+    tx.push({id,date,nr,tip,expl,acc,inc:0,plata:sum});
+  }else{
+    const to=acc==='Casa'?'Banca':'Casa';
+    if(bal(acc)-sum<-0.001)return err(`Fonduri insuficiente în ${acc}: sold ${fmt(bal(acc))} RON.`);
+    tx.push({id,date,nr,tip,expl:expl+` (${acc} → ${to})`,acc,inc:0,plata:sum,pairId:id+1},{pairId:id,id:id+1,date,nr,tip,expl:expl+` (${acc} → ${to})`,acc:to,inc:sum,plata:0});
+  }
+  closeModal();persist();
+});
+function editTx(id){
+  const t=tx.find(x=>x.id===id);if(!t)return;
+  openModal(t.inc>0?'incasare':'plata');editId=id;
+  $('m-title').textContent='Editează document'+(t.pairId?' (transfer, se modifică ambele conturi)':'');
+  if(![...$('f-tip').options].some(o=>o.value===t.tip))$('f-tip').add(new Option(t.tip));
+  $('f-date').value=t.date;$('f-nr').value=t.nr;$('f-tip').value=t.tip;$('f-expl').value=t.expl;
+  $('f-acc').value=t.acc;$('f-acc').disabled=!!t.pairId;$('f-sum').value=t.inc||t.plata;
+}
+function delTx(id){const t=tx.find(x=>x.id===id);if(t&&confirm('Ștergi înregistrarea "'+t.expl+'"?')){tx=tx.filter(x=>x.id!==id&&x.id!==t.pairId);persist()}}
+
+document.querySelectorAll('#acc-filter button').forEach(b=>b.onclick=()=>{accFilter=b.dataset.acc;render()});
+['d1','d2'].forEach(i=>$(i).addEventListener('change',render));$('search').addEventListener('input',render);
+
+function switchTab(t,k){
+  if(k){docKind=k;renderDocs()}const key=k||t;
+  ['casa-banca','stoc-pangar','registru-pangar','docs'].forEach(n=>$('screen-'+n).classList.toggle('hidden',n!==t));
+  ['casa-banca','stoc-pangar','registru-pangar','facturi','chitante','bonuri'].forEach(n=>$('nav-'+n).className='w-full text-left py-2 px-3 rounded-md font-medium '+(n===key?'bg-slate-800 text-teal-300':'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'));
+  $('sidebar').classList.add('-translate-x-full');
+}
+$('sidebar-toggle').onclick=()=>$('sidebar').classList.toggle('-translate-x-full');
+
+const itemOf=id=>stoc.find(x=>x.id===id)||{name:'(articol șters)',um:''};
+const qtyIn=(arr,i)=>Math.round(arr.filter(l=>l.item===i).reduce((z,l)=>z+(l.type==='Intrare'?l.qty:-l.qty),0)*1000)/1000;
+const qtyOf=i=>qtyIn(log,i);
+function stocRows(){
+  const D=$('st-date').value||today(),Y=D.slice(0,4)+'-01-01',only=$('st-only').checked;
+  const rows=stoc.map(s=>{const L=log.filter(l=>l.item===s.id),sg=l=>l.type==='Intrare'?l.qty:-l.qty,sm=(t)=>L.filter(l=>l.date>=Y&&l.date<=D&&l.type===t).reduce((z,l)=>z+l.qty,0);
+    const ini=L.filter(l=>l.date<Y).reduce((z,l)=>z+sg(l),0),inn=sm('Intrare'),out=sm('Ieșire');return{s,ini,inn,out,q:Math.round((ini+inn-out)*1000)/1000}}).filter(r=>!only||r.q>0);
+  return{rows,D};
+}
+function renderStoc(){
+  const {rows}=stocRows(),t=rows.reduce((z,r)=>({i:z.i+r.ini,n:z.n+r.inn,o:z.o+r.out,v:z.v+r.q*(r.s.pret||0)}),{i:0,n:0,o:0,v:0});
+  $('tbody-stoc').innerHTML=rows.length?rows.map(({s,ini,inn,out,q})=>`<tr><td class="py-2 px-3 font-medium">${esc(s.name)}</td><td class="py-2 px-3 text-right">${ini}</td><td class="py-2 px-3 text-right text-emerald-700">${inn}</td><td class="py-2 px-3 text-right text-blue-700">-${out}</td><td class="py-2 px-3 text-right font-bold ${q<0?'text-rose-600':''}">${q}</td><td class="py-2 px-3">${esc(s.um)}</td><td class="py-2 px-3 text-right">${fmt(s.adaos||0)}</td><td class="py-2 px-3 text-right">${fmt(s.pret||0)}</td><td class="py-2 px-3 text-right">${fmt(q*(s.pret||0))}</td>
+    <td class="py-2 px-3 text-center whitespace-nowrap"><button onclick="openMv(${s.id},'Intrare')" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs">+</button> <button onclick="openMv(${s.id},'Ieșire')" class="px-2 py-1 bg-rose-600 text-white rounded text-xs">−</button> <button onclick="editItem(${s.id})" class="text-slate-400 hover:text-teal-600 mx-1" title="Preț / adaos"><i class="fa-solid fa-pen"></i></button><button onclick="delItem(${s.id})" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')
+    :'<tr><td colspan="10" class="py-8 text-center text-slate-400">Niciun produs. Apasă „Produs nou”.</td></tr>';
+  $('tfoot-stoc').innerHTML=`<tr><td class="py-2 px-3">N= ${rows.length}</td><td class="px-3 text-right">${t.i}</td><td class="px-3 text-right">${t.n}</td><td class="px-3 text-right">${t.o}</td><td colspan="4"></td><td class="px-3 text-right">${fmt(t.v)}</td><td></td></tr>`;
+}
+['st-date','st-only'].forEach(i=>$(i).addEventListener('change',render));$('st-date').value=today();
+function reportStoc(){const {rows,D}=stocRows();
+  printHTML('Stoc pangar',`<h3>Stoc Pangar la ${dmy(D)}</h3><table><thead><tr><th>Produs</th><th>U.M.</th><th class="r">Stoc inițial</th><th class="r">Intrări</th><th class="r">Ieșiri</th><th class="r">Stoc</th><th class="r">Adaos</th><th class="r">Preț protoierie</th><th class="r">Valoare</th></tr></thead><tbody>${rows.map(({s,ini,inn,out,q})=>`<tr><td>${esc(s.name)}</td><td>${esc(s.um)}</td><td class="r">${ini}</td><td class="r">${inn}</td><td class="r">${out}</td><td class="r">${q}</td><td class="r">${fmt(s.adaos||0)}</td><td class="r">${fmt(s.pret||0)}</td><td class="r">${fmt(q*(s.pret||0))}</td></tr>`).join('')}</tbody></table>`)}
+
+/* ---------- Documente: facturi intrări / chitanțe ieșiri / bonuri consum ---------- */
+const KN={facturi:'Facturi intrări — recepție în pangar',chitante:'Încasări (chitanță sau POS) — chitanțe ieșiri',bonuri:'Ieșiri — bonuri de consum'},KD={facturi:'factura',chitante:'chitanta',bonuri:'bon'};
+const dv=d=>r2(d.lines.reduce((z,l)=>z+l.qty*l.pret,0)),da=d=>r2(d.lines.reduce((z,l)=>z+l.qty*(l.adaos||0),0));
+function renderDocs(){
+  $('docs-title').textContent=KN[docKind];$('docs-new').innerHTML='<i class="fa-solid fa-plus"></i> '+{facturi:'Recepție nouă',chitante:'Chitanță nouă',bonuri:'Bon nou'}[docKind];
+  const rows=docs.filter(d=>d.kind===KD[docKind]).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id),ch=docKind==='chitante';
+  let sq=0,sv=0,sa=0;
+  $('tbody-docs').innerHTML=rows.length?rows.map(d=>{const v=d.pending?d.val:dv(d),a=da(d),q=d.lines.reduce((z,l)=>z+l.qty,0);sq+=q;sv+=v;sa+=a;
+    const st=docKind!=='facturi'?'':d.pending?'<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[11px] font-semibold">Nerecepționată</span> <button onclick="openDoc(%d)" class="px-2 py-1 bg-teal-600 text-white rounded text-xs">Recepție</button>'.replace('%d',d.id):'<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-semibold">Recepționată</span>';
+    return `<tr class="hover:bg-slate-50"><td class="py-2 px-3 font-mono font-bold">${esc((d.serie?d.serie+' ':'')+d.nr)}</td><td class="py-2 px-3">${dmy(d.date)}</td><td class="py-2 px-3">${d.pending?esc(d.produse):esc(d.lines.map(l=>itemOf(l.item).name).join(', '))}</td><td class="py-2 px-3 text-right">${q||''}</td><td class="py-2 px-3 text-right">${fmt(v)}</td><td class="py-2 px-3 text-right">${a?fmt(a):''}</td><td class="py-2 px-3 text-right font-semibold">${fmt(ch?v+a:v)}</td>
+    <td class="py-2 px-3 text-center whitespace-nowrap">${st} ${d.pending?'':`<button onclick="openDoc(${d.id})" class="text-slate-400 hover:text-teal-600 mx-1" title="Editează"><i class="fa-solid fa-pen"></i></button>`}<button onclick="delDoc(${d.id})" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button></td></tr>`}).join('')
+    :'<tr><td colspan="8" class="py-8 text-center text-slate-400">Niciun document. Folosește butonul din dreapta sus.</td></tr>';
+  $('tfoot-docs').innerHTML=`<tr><td class="py-2 px-3" colspan="3">N= ${rows.length}</td><td class="px-3 text-right">${sq}</td><td class="px-3 text-right">${fmt(sv)}</td><td class="px-3 text-right">${fmt(sa)}</td><td class="px-3 text-right">${fmt(ch?sv+sa:sv)}</td><td></td></tr>`;
+}
+const LCLS='border border-slate-300 rounded-md px-2 py-1';
+function addLine(l){
+  const d=document.createElement('div');d.className='flex gap-2 items-center';
+  d.innerHTML=`<select class="l-item flex-1 ${LCLS}">${stoc.map(s=>`<option value="${s.id}">${esc(s.name)} (${esc(s.um)})</option>`).join('')}</select><input type="number" class="l-qty w-20 ${LCLS}" step="0.001" min="0" placeholder="Cant."><input type="number" class="l-pret w-24 ${LCLS} ${docKind==='facturi'?'':'hidden'}" step="0.01" min="0" placeholder="Preț prot."><button type="button" onclick="this.parentNode.remove()" class="text-slate-400 hover:text-rose-600">✕</button>`;
+  $('doc-lines').appendChild(d);const sel=d.querySelector('.l-item');
+  if(l.item)sel.value=l.item;if(l.qty)d.querySelector('.l-qty').value=l.qty;
+  const pr=d.querySelector('.l-pret'),fill=()=>pr.value=itemOf(+sel.value).pret||'';l.pret!==undefined?pr.value=l.pret:fill();sel.onchange=fill;
+}
+function openDoc(id){
+  const d=id?docs.find(x=>x.id===id):null;docEdit=id||null;
+  $('doc-title').textContent=(d&&!d.pending?'Editează ':'')+{facturi:'recepție factură',chitante:'chitanță',bonuri:'bon de consum'}[docKind]+(d&&d.pending?' — valoare factură '+fmt(d.val)+' RON':'');
+  $('doc-date').value=d?d.date:today();$('doc-nr').value=d?d.nr:String(Math.max(0,...docs.filter(x=>x.kind===KD[docKind]).map(x=>parseInt(x.nr)||0))+1);
+  $('doc-serie-w').classList.toggle('hidden',docKind!=='facturi');$('doc-serie').value=d?d.serie||'':'GJ';$('doc-err').classList.add('hidden');
+  if(!stoc.length){alert('Adaugă mai întâi produse în Stoc Pangar.');return}
+  $('doc-lines').innerHTML='';(d&&d.lines.length?d.lines:[{}]).forEach(addLine);
+  $('modal-doc').classList.remove('hidden');$('modal-doc').classList.add('flex');
+}
+function closeDoc(){$('modal-doc').classList.add('hidden');$('modal-doc').classList.remove('flex')}
+$('form-doc').addEventListener('submit',e=>{
+  e.preventDefault();const err=m=>{$('doc-err').textContent=m;$('doc-err').classList.remove('hidden')};
+  const k=KD[docKind],date=$('doc-date').value,nr=$('doc-nr').value.trim(),id=docEdit||Date.now();
+  const lines=[...$('doc-lines').children].map(r=>{const it=itemOf(+r.querySelector('.l-item').value);return{item:it.id,qty:parseFloat(r.querySelector('.l-qty').value),pret:k==='factura'?(parseFloat(r.querySelector('.l-pret').value)||0):(it.pret||0),adaos:k==='chitanta'?(it.adaos||0):0}}).filter(l=>l.qty>0);
+  if(!lines.length)return err('Adaugă cel puțin un produs cu cantitate.');
+  const nlog=log.filter(l=>l.docId!==id).concat(lines.map((l,i)=>({id:id+i+1,date,item:l.item,type:k==='factura'?'Intrare':'Ieșire',qty:l.qty,doc:nr,expl:{factura:'Recepție factură',chitanta:'Chitanță',bon:'Bon de consum'}[k],docId:id})));
+  for(const s of stoc)if(qtyIn(nlog,s.id)<-0.0005)return err('Stoc insuficient pentru '+s.name+'.');
+  const ntx=tx.filter(t=>t.docId!==id);
+  if(k==='chitanta')lines.forEach((l,i)=>{const it=itemOf(l.item),q=`${l.qty} ${it.um}`,pv=r2(l.qty*l.pret),av=r2(l.qty*l.adaos);
+    if(pv>0)ntx.push({id:id+100+i*2,date,nr,tip:'Chitanță',expl:`Protoierie-${it.name} ${q}`,acc:'Casa',inc:pv,plata:0,docId:id});
+    if(av>0)ntx.push({id:id+101+i*2,date,nr,tip:'Chitanță',expl:`Parohie-${it.name} ${q}`,acc:'Casa',inc:av,plata:0,docId:id})});
+  docs=docs.filter(d=>d.id!==id).concat({id,kind:k,date,nr,serie:$('doc-serie').value.trim(),lines,pending:false});
+  tx=ntx;log=nlog;closeDoc();persist();
+});
+function delDoc(id){const d=docs.find(x=>x.id===id);if(!d||!confirm('Ștergi documentul '+d.nr+'? Se șterg și înregistrările de stoc și încasările generate.'))return;
+  const nlog=log.filter(l=>l.docId!==id);for(const s of stoc)if(qtyIn(nlog,s.id)<-0.0005){alert('Ștergerea ar face negativ stocul pentru '+s.name+'.');return}
+  docs=docs.filter(x=>x.id!==id);tx=tx.filter(t=>t.docId!==id);log=nlog;persist()}
+
+/* ---------- Salarizare ---------- */
+const SI=['Contribuția de la bugetul de stat','Impozit din salariu','Contribuția 10% CASS salarii','Contribuția 25% CAS salarii'],SP=['Plata salariilor de bază','Plata ind. conducere salarii','Plata spor vechime salarii','Plata impozit salarii','Plata CASS 10% salarii','Plata CAS 25% salarii','Plata CAM 2.25% salarii'];
+function openSal(){
+  const row=l=>`<div class="grid gap-2 items-center" style="grid-template-columns:4.5rem 1fr 7rem" data-l="${esc(l)}"><input class="s-nr ${LCLS}" placeholder="Nr."><span>${esc(l)}</span><input type="number" step="0.01" min="0" class="s-sum ${LCLS}" placeholder="Suma"></div>`;
+  $('sal-inc').innerHTML=SI.map(row).join('');$('sal-pl').innerHTML=SP.map(row).join('');$('sal-date').value=today();$('sal-err').classList.add('hidden');
+  $('modal-sal').classList.remove('hidden');$('modal-sal').classList.add('flex');
+}
+$('form-sal').addEventListener('submit',e=>{
+  e.preventDefault();const err=m=>{$('sal-err').textContent=m;$('sal-err').classList.remove('hidden')},date=$('sal-date').value;
+  if(tx.some(t=>t.sal&&t.date===date))return err('Există deja o salarizare cu această dată. Alege altă dată.');
+  const get=(c,inc)=>[...$(c).children].map(r=>({nr:r.querySelector('.s-nr').value.trim(),expl:r.dataset.l,sum:r2(parseFloat(r.querySelector('.s-sum').value)||0)})).filter(x=>x.sum>0).map((x,i)=>({id:Date.now()+i+(inc?0:50),date,nr:x.nr,tip:inc?'Chitanță':'Bon',expl:x.expl,acc:'Casa',inc:inc?x.sum:0,plata:inc?0:x.sum,sal:true}));
+  const add=get('sal-inc',true).concat(get('sal-pl',false));if(!add.length)return err('Completează cel puțin o sumă.');
+  const nx=tx.concat(add),c=nx.filter(t=>t.acc==='Casa').reduce((z,t)=>z+t.inc-t.plata,0);
+  if(c<-0.001)return err('Fonduri insuficiente în Casă: soldul ar deveni '+fmt(c)+' RON.');
+  tx=nx;$('modal-sal').classList.add('hidden');$('modal-sal').classList.remove('flex');persist();
+});
+function logRows(){const i=$('p-item').value,a=$('p-d1').value,b=$('p-d2').value;
+  return log.filter(l=>(!i||String(l.item)===i)&&(!a||l.date>=a)&&(!b||l.date<=b)).sort((x,y)=>y.date.localeCompare(x.date)||y.id-x.id)}
+function renderLog(){
+  const sel=$('p-item'),cur=sel.value;
+  sel.innerHTML='<option value="">Toate articolele</option>'+stoc.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');sel.value=cur;
+  const rows=logRows();
+  $('tbody-log').innerHTML=rows.length?rows.map(l=>{const it=itemOf(l.item);return `<tr class="hover:bg-slate-50"><td class="py-3 px-4 text-slate-500">${dmy(l.date)}</td><td class="py-3 px-4 font-mono font-bold">${esc(l.doc)}</td>
+    <td class="py-3 px-4">${esc(it.name)}</td><td class="py-3 px-4"><span class="${l.type==='Intrare'?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800'} px-2 py-0.5 rounded font-semibold text-[11px]">${l.type}</span></td>
+    <td class="py-3 px-4 text-right font-semibold">${l.qty} ${esc(it.um)}</td><td class="py-3 px-4">${esc(l.expl)}</td>
+    <td class="py-3 px-4 text-center whitespace-nowrap"><button onclick="openMv(null,null,${l.id})" class="text-slate-400 hover:text-teal-600 mr-2" title="Editează"><i class="fa-solid fa-pen"></i></button><button onclick="delMv(${l.id})" class="text-slate-400 hover:text-rose-600" title="Șterge"><i class="fa-solid fa-trash"></i></button></td></tr>`}).join('')
+    :'<tr><td colspan="7" class="py-8 text-center text-slate-400">Nicio mișcare în perioada aleasă.</td></tr>';
+}
+['p-item','p-d1','p-d2'].forEach(i=>$(i).addEventListener('change',render));
+function addItem(){const name=prompt('Denumire produs:');if(!name||!name.trim())return;const um=prompt('Unitate de măsură (Buc, Kg.):','Buc')||'Buc';
+  const adaos=parseFloat(prompt('Adaos parohie (RON/unitate):','0'))||0,pret=parseFloat(prompt('Preț protoierie (RON/unitate):','0'))||0,qty=parseFloat(prompt('Stoc inițial:','0'));
+  const id=Date.now();stoc.push({id,name:name.trim(),um:um.trim(),adaos,pret});
+  if(qty>0)log.push({id:id+1,date:today(),item:id,type:'Intrare',qty,doc:'SI',expl:'Stoc inițial'});persist()}
+function editItem(id){const s=itemOf(id);const a=prompt('Adaos parohie (RON/unitate):',s.adaos||0);if(a===null)return;const p=prompt('Preț protoierie (RON/unitate):',s.pret||0);if(p===null)return;s.adaos=parseFloat(a)||0;s.pret=parseFloat(p)||0;persist()}
+function delItem(id){const s=stoc.find(x=>x.id===id);if(s&&confirm('Ștergi articolul "'+s.name+'" și toate mișcările lui?')){stoc=stoc.filter(x=>x.id!==id);log=log.filter(l=>l.item!==id);persist()}}
+function delMv(id){if(confirm('Ștergi mișcarea?')){const n=log.filter(l=>l.id!==id);for(const s of stoc)if(qtyIn(n,s.id)<-0.0005){alert('Ștergerea ar face negativ stocul pentru '+s.name+'.');return}log=n;persist()}}
+function openMv(itemId,type,logId){
+  if(!stoc.length){alert('Adaugă mai întâi un articol în Stoc Pangar.');return}
+  mvEdit=logId||null;const l=logId?log.find(x=>x.id===logId):null;
+  $('mv-title').textContent=l?'Editează mișcare stoc':'Mișcare stoc';
+  $('mv-item').innerHTML=stoc.map(s=>`<option value="${s.id}">${esc(s.name)} (${esc(s.um)})</option>`).join('');
+  $('mv-date').value=l?l.date:new Date().toISOString().slice(0,10);$('mv-doc').value=l?l.doc:'';
+  $('mv-item').value=l?l.item:(itemId||stoc[0].id);$('mv-type').value=l?l.type:(type||'Intrare');
+  $('mv-qty').value=l?l.qty:'';$('mv-expl').value=l?l.expl:'';$('mv-err').classList.add('hidden');
+  $('modal-mv').classList.remove('hidden');$('modal-mv').classList.add('flex');$('mv-qty').focus();
+}
+function closeMv(){$('modal-mv').classList.add('hidden');$('modal-mv').classList.remove('flex')}
+$('modal-mv').addEventListener('click',e=>{if(e.target.id==='modal-mv')closeMv()});
+$('form-mv').addEventListener('submit',e=>{
+  e.preventDefault();const bad=m=>{$('mv-err').textContent=m;$('mv-err').classList.remove('hidden')};
+  const qty=Math.round(parseFloat($('mv-qty').value)*1000)/1000;if(!(qty>0))return bad('Introdu o cantitate mai mare ca 0.');
+  const rec={id:mvEdit||Date.now(),date:$('mv-date').value,item:+$('mv-item').value,type:$('mv-type').value,qty,doc:$('mv-doc').value.trim(),expl:$('mv-expl').value.trim()};
+  const old=mvEdit?log.find(x=>x.id===mvEdit):null;
+  const next=mvEdit?log.map(x=>x.id===mvEdit?rec:x):log.concat(rec);
+  for(const i of new Set([rec.item,old&&old.item]))if(i&&qtyIn(next,i)<-0.0005)return bad('Stoc insuficient pentru '+itemOf(i).name+': rezultă '+qtyIn(next,i)+' '+itemOf(i).um+'.');
+  log=next;closeMv();persist();
+});
+
+/* ---------- Rapoarte PDF (tipărire → Salvează ca PDF) ---------- */
+function printHTML(title,body){
+  const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(f);
+  const d=f.contentWindow.document;d.open();
+  d.write(`<!DOCTYPE html><html lang="ro"><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:Arial,sans-serif;font-size:11px;color:#111}h1{font-size:16px;margin:0}h2{font-size:12px;font-weight:normal;margin:2px 0 4px;color:#444}h3{font-size:12px;margin:16px 0 0}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #999;padding:4px 6px;text-align:left}th{background:#e5e7eb}.r{text-align:right}.b td{font-weight:bold;background:#f3f4f6}.sig{margin-top:40px;display:flex;justify-content:space-between}@page{size:A4;margin:12mm}</style></head><body>
+  <h1>${esc((PAR?PAR.name:'').toUpperCase())}</h1><h2>${esc([PAR&&PAR.prot,PAR&&PAR.arh].filter(Boolean).join(' • '))}</h2>${body}
+  <div class="sig"><span>Întocmit: ____________________</span><span>Paroh: ____________________</span></div></body></html>`);
+  d.close();setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),2000)},300);
+}
+function reportCB(){
+  const d1=$('d1').value,d2=$('d2').value,ok=t=>accFilter==='tot'||t.acc===accFilter;
+  const prev=tx.filter(t=>ok(t)&&d1&&t.date<d1).reduce((z,t)=>z+t.inc-t.plata,0);
+  const rows=tx.filter(t=>ok(t)&&(!d1||t.date>=d1)&&(!d2||t.date<=d2)).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
+  let run=prev,ti=0,tp=0;
+  const trs=rows.map(t=>{run+=t.inc-t.plata;ti+=t.inc;tp+=t.plata;return `<tr><td>${dmy(t.date)}</td><td>${esc(t.nr)}</td><td>${esc(t.tip)}</td><td>${esc(t.expl)}</td><td>${t.acc}</td><td class="r">${t.inc?fmt(t.inc):''}</td><td class="r">${t.plata?fmt(t.plata):''}</td><td class="r">${fmt(run)}</td></tr>`}).join('');
+  printHTML('Registru casa-banca',`<h3>Registru ${accFilter==='tot'?'Casă &amp; Bancă':accFilter==='Casa'?'de Casă':'de Bancă'}</h3><h2>Perioada: ${d1?dmy(d1):'început'} – ${d2?dmy(d2):'prezent'}</h2>
+  <table><thead><tr><th>Data</th><th>Nr. doc</th><th>Tip</th><th>Explicație</th><th>Cont</th><th class="r">Încasări</th><th class="r">Plăți</th><th class="r">Sold</th></tr></thead><tbody>
+  <tr class="b"><td colspan="7">Sold anterior perioadei</td><td class="r">${fmt(prev)}</td></tr>${trs}
+  <tr class="b"><td colspan="5">Total perioadă</td><td class="r">${fmt(ti)}</td><td class="r">${fmt(tp)}</td><td class="r">${fmt(run)}</td></tr></tbody></table>
+  <p><b>Sold final: ${fmt(run)} RON</b></p>`);
+}
+function reportPangar(){
+  const i=$('p-item').value,d1=$('p-d1').value,d2=$('p-d2').value;
+  const rows=logRows().reverse();
+  const items=stoc.filter(s=>!i||String(s.id)===i);
+  const sum=items.map(s=>{const L=log.filter(l=>l.item===s.id);
+    const pre=qtyIn(L.filter(l=>d1&&l.date<d1),s.id),inn=L.filter(l=>l.type==='Intrare'&&(!d1||l.date>=d1)&&(!d2||l.date<=d2)).reduce((z,l)=>z+l.qty,0),out=L.filter(l=>l.type==='Ieșire'&&(!d1||l.date>=d1)&&(!d2||l.date<=d2)).reduce((z,l)=>z+l.qty,0);
+    return `<tr><td>${esc(s.name)}</td><td>${esc(s.um)}</td><td class="r">${pre}</td><td class="r">${inn}</td><td class="r">${out}</td><td class="r">${Math.round((pre+inn-out)*1000)/1000}</td></tr>`}).join('');
+  const trs=rows.map(l=>{const it=itemOf(l.item);return `<tr><td>${dmy(l.date)}</td><td>${esc(l.doc)}</td><td>${esc(it.name)}</td><td>${l.type}</td><td class="r">${l.qty} ${esc(it.um)}</td><td>${esc(l.expl)}</td></tr>`}).join('');
+  printHTML('Registru pangar',`<h3>Registru Pangar</h3><h2>Perioada: ${d1?dmy(d1):'început'} – ${d2?dmy(d2):'prezent'}</h2>
+  <table><thead><tr><th>Data</th><th>Nr. doc</th><th>Articol</th><th>Tip</th><th class="r">Cantitate</th><th>Explicație</th></tr></thead><tbody>${trs||'<tr><td colspan="6">Nicio mișcare.</td></tr>'}</tbody></table>
+  <h3>Situația stocurilor</h3><table><thead><tr><th>Articol</th><th>U.M.</th><th class="r">Stoc inițial</th><th class="r">Intrări</th><th class="r">Ieșiri</th><th class="r">Stoc final</th></tr></thead><tbody>${sum}</tbody></table>`);
+}
+function exportCSV(){
+  const h=['Data','Nr. Doc','Tip Doc','Explicație','Cont','Încasare','Plată'];
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const csv='\ufeff'+[h.map(q).join(';')].concat(tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[dmy(t.date),t.nr,t.tip,t.expl,t.acc,t.inc,t.plata].map(q).join(';'))).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='registru-casa-banca.csv';a.click();
+}
+async function resetAll(){if(!confirm('Ștergi toate datele acestei parohii?'))return;if(GUEST)sessionStorage.removeItem('pic_guest');else{pending={};const {error}=await sb.from('parish_data').delete().eq('parish_id',PAR.id);if(error){alert('Nu s-au putut șterge datele: '+error.message);return}}location.reload()}
+
+/* ---------- Sesiune ---------- */
+async function logout(){
+  if(GUEST){if(!confirm('Datele din modul vizitator vor fi șterse. Continui?'))return;sessionStorage.removeItem('pic_guest');sessionStorage.removeItem('pic_guest_on')}
+  else{if(Object.keys(pending).length)await flush();await sb.auth.signOut()}
+  location.reload();
+}
+async function editParish(){
+  const name=(prompt('Denumirea parohiei:',PAR.name)||'').trim();if(!name)return;
+  const prot=(prompt('Protopopiatul:',PAR.prot||'')||'').trim(),arh=(prompt('Arhiepiscopia / Episcopia:',PAR.arh||'')||'').trim();
+  const {error}=await sb.from('parishes').update({name,prot,arh}).eq('id',PAR.id);
+  if(error){alert('Nu s-a putut salva: '+error.message);return}location.reload();
+}
+async function checkRemote(){
+  if(GUEST||document.visibilityState!=='visible'||Object.keys(pending).length)return;
+  const {data}=await sb.from('parish_data').select('updated_at').eq('parish_id',PAR.id).order('updated_at',{ascending:false}).limit(1);
+  if(data&&data[0]&&Date.parse(data[0].updated_at)>(window.__TS||0)+5)location.reload();
+}
+$('hdr-par').innerHTML=`<b class="text-teal-300">${esc(PAR.name.toUpperCase())}</b>${PAR.prot?' • '+esc(PAR.prot.toUpperCase()):''}${PAR.arh?' • '+esc(PAR.arh.toUpperCase()):''}`;
+$('user-ini').textContent=(window.__EMAIL||'?')[0].toUpperCase();$('user-par').textContent=PAR.name;$('user-mail').textContent=window.__EMAIL;
+$('menu-par').textContent=PAR.name;$('menu-mail').textContent=window.__EMAIL;
+document.addEventListener('click',e=>{if(!e.target.closest('#user-btn,#user-menu'))$('user-menu').classList.add('hidden')});
+if(GUEST){$('guest-bar').classList.remove('hidden');$('user-mail').textContent='Mod vizitator';setSync('Mod vizitator — nu se salvează pe server');
+  document.querySelector('#user-menu button[onclick="editParish()"]').classList.add('hidden');
+  document.querySelector('#user-menu button[onclick="logout()"]').innerHTML='<i class="fa-solid fa-right-from-bracket w-4"></i> Ieși din modul vizitator'}
+else{setSync('<span class="text-emerald-400">●</span> Conectat la server');document.addEventListener('visibilitychange',checkRemote);setInterval(checkRemote,60000)}
+switchTab('casa-banca');render();
+</script>
+</body>
+</html>
