@@ -67,6 +67,10 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
       <button onclick="openSal()" class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-user-gear"></i> Salarizare</button>
       <button onclick="openModal('transfer')" class="bg-slate-700 hover:bg-slate-800 px-3 py-2 rounded-lg"><i class="fa-solid fa-right-left"></i> Transfer</button>
       <button onclick="reportCB()" class="bg-amber-600 hover:bg-amber-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf"></i> Raport PDF</button>
+      <button onclick="exportXlsx('registru')" class="bg-green-700 hover:bg-green-800 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+      <button onclick="reportPartial()" class="bg-amber-700 hover:bg-amber-800 px-3 py-2 rounded-lg" title="Tipărește doar rândurile bifate"><i class="fa-solid fa-print"></i> Registru parțial</button>
+      <button onclick="$('imp-file').click()" class="bg-slate-500 hover:bg-slate-600 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-import"></i> Import Excel / CSV</button>
+      <input type="file" id="imp-file" accept=".xlsx,.xls,.csv,text/csv,text/plain" class="hidden" onchange="importFile(this)">
     </div>
   </div>
 
@@ -83,17 +87,18 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
       <button data-acc="Banca" class="px-3 py-1.5 rounded-md font-medium">Banca</button>
     </div>
     <div class="flex items-center gap-2 flex-wrap text-xs">
-      <label class="text-slate-500 font-medium">De la:</label><input type="date" id="d1" value="2026-09-01" class="border border-slate-300 rounded-md px-2 py-1">
+      <div id="per-filter" class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mr-2"><button data-per="tot" class="px-3 py-1.5 rounded-md font-medium">Tot</button><button data-per="prev" class="px-3 py-1.5 rounded-md font-medium">Luna anterioară</button><button data-per="cur" class="px-3 py-1.5 rounded-md font-medium">Luna curentă</button><button data-per="per" class="px-3 py-1.5 rounded-md font-medium">Perioadă</button></div><label class="text-slate-500 font-medium">De la:</label><input type="date" id="d1" value="2026-09-01" class="border border-slate-300 rounded-md px-2 py-1">
       <label class="text-slate-500 font-medium">Până la:</label><input type="date" id="d2" value="2026-12-31" class="border border-slate-300 rounded-md px-2 py-1">
     </div>
-    <input type="text" id="search" placeholder="Căutare explicație, doc..." class="md:w-64 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-teal-500">
+    <input type="text" id="search" placeholder="Căutare explicație, doc..." class="md:w-56 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-teal-500">
+    <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="incl-sold"> Coloana SOLD</label>
+    <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="partial-mode"> Registru parțial</label>
   </div>
 
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-left text-sm">
-        <thead class="bg-slate-800 text-slate-200 text-xs uppercase"><tr>
-          <th class="py-3 px-4">Data</th><th class="py-3 px-4">Nr. Doc</th><th class="py-3 px-4">Tip Doc</th><th class="py-3 px-4">Explicație Registru</th><th class="py-3 px-4 text-center">Cont</th><th class="py-3 px-4 text-right">Încasare (RON)</th><th class="py-3 px-4 text-right">Plată (RON)</th><th class="py-3 px-4 text-center">Acțiuni</th></tr></thead>
+        <thead class="bg-slate-800 text-slate-200 text-[11px] uppercase"><tr><th class="col-sel hidden py-2 px-2"><input type="checkbox" onchange="selAll(this.checked)"></th><th class="py-2 px-2">Data</th><th class="py-2 px-2">Nr. doc. încasare</th><th class="py-2 px-2">Nr. doc. plată</th><th class="py-2 px-2">Tip document</th><th class="py-2 px-2">Explicația</th><th class="py-2 px-2 text-center">Tip operație</th><th class="py-2 px-2 text-center">Valută</th><th class="py-2 px-2 text-right">Numerar încasări</th><th class="py-2 px-2 text-right">Numerar plăți</th><th class="py-2 px-2 text-right">Bancă încasări</th><th class="py-2 px-2 text-right">Bancă plăți</th><th class="col-sold hidden py-2 px-2 text-right">Sold</th><th class="py-2 px-2 text-center">Acțiuni</th></tr></thead>
         <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
         <tfoot id="tfoot" class="bg-slate-100 font-bold text-sm"></tfoot>
       </table>
@@ -109,6 +114,7 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
       <label>Stoc la data <input type="date" id="st-date" class="border border-slate-300 rounded-md px-2 py-1"></label>
       <label class="flex items-center gap-1"><input type="checkbox" id="st-only"> Doar produsele cu stoc</label>
       <button onclick="addItem()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-plus"></i> Produs nou</button>
+      <button onclick="exportXlsx('stoc')" class="bg-green-700 hover:bg-green-800 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
       <button onclick="reportStoc()" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf"></i> Raport PDF</button>
     </div>
   </div>
@@ -123,7 +129,8 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
 <div id="screen-docs" class="p-4 sm:p-6 space-y-5 hidden">
   <div class="flex items-center justify-between pb-3 border-b border-slate-200">
     <h1 id="docs-title" class="text-xl sm:text-2xl font-bold"></h1>
-    <button id="docs-new" onclick="openDoc()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 py-2 rounded-lg"></button>
+    <div class="flex gap-2"><button id="docs-new" onclick="openDoc()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 py-2 rounded-lg"></button><button onclick="exportXlsx('docs')" class="bg-green-700 hover:bg-green-800 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+      <button onclick="reportDocs()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf"></i> Raport PDF</button></div>
   </div>
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
     <table class="w-full text-left text-sm">
@@ -138,6 +145,7 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
     <h1 class="text-xl sm:text-2xl font-bold">Registru Pangar <span class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-semibold">Intrări &amp; Ieșiri</span></h1>
     <div class="flex gap-2 text-sm font-semibold text-white">
       <button onclick="openMv(null,'Intrare')" class="bg-teal-600 hover:bg-teal-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-plus"></i> Mișcare nouă</button>
+      <button onclick="exportXlsx('pangar')" class="bg-green-700 hover:bg-green-800 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
       <button onclick="reportPangar()" class="bg-amber-600 hover:bg-amber-700 px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf"></i> Raport PDF</button>
     </div>
   </div>
@@ -214,6 +222,7 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
    </div>
    <p id="au-err" class="text-rose-600 text-xs hidden"></p>
    <p id="au-ok" class="text-emerald-700 text-xs hidden"></p>
+   <button type="button" id="au-resend" class="hidden text-xs text-teal-700 hover:underline text-left">Retrimite emailul de confirmare</button>
    <button type="button" id="au-forgot" class="text-xs text-teal-700 hover:underline">Am uitat parola</button>
    <button type="submit" id="au-go" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-lg"></button>
   </form>
@@ -241,6 +250,7 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
   <p id="sal-err" class="text-rose-600 text-xs hidden"></p><div class="flex justify-end gap-2 pt-2"><button type="button" onclick="this.closest('.fixed').classList.add('hidden');this.closest('.fixed').classList.remove('flex')" class="px-3 py-2 rounded-lg border border-slate-300">Anulează</button><button type="submit" class="px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">Salvează</button></div>
 </form></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* === CONFIGURARE: completează cu datele proiectului tău Supabase === */
 const SUPABASE_URL='https://pharunhnydporybhhced.supabase.co', SUPABASE_KEY='sb_publishable_ky-_1D43bp9zmJpKlKlLxg_JKJYABnE';
@@ -257,7 +267,7 @@ function setAuthMode(m){
   $b('au-up').classList.toggle('hidden',!(m==='up'||m==='newpw'));
   $b('au-pw').autocomplete=(m==='up'||m==='newpw')?'new-password':'current-password';
   $b('au-go').textContent={in:'Intră în cont',up:'Creează cont',forgot:'Trimite linkul de resetare',newpw:'Salvează parola nouă'}[m];
-  $b('au-forgot').classList.toggle('hidden',m!=='in');$b('au-err').classList.add('hidden');$b('au-ok').classList.add('hidden');
+  $b('au-forgot').classList.toggle('hidden',m!=='in');$b('au-resend').classList.add('hidden');$b('au-err').classList.add('hidden');$b('au-ok').classList.add('hidden');
   const on=(a)=>'flex-1 py-1.5 rounded-md '+(a?'bg-white shadow-sm text-teal-800':'text-slate-600');
   $b('tab-in').className=on(m==='in'||m==='forgot'||m==='newpw');$b('tab-up').className=on(m==='up');
 }
@@ -269,7 +279,9 @@ function runApp(par,data,email,guest){
   const el=document.createElement('script');el.text=$b('app-src').textContent;document.body.appendChild(el);
 }
 async function loadParish(session){
-  const {data:par,error}=await sb.from('parishes').select('id,name,prot,arh').eq('owner',session.user.id).maybeSingle();
+  let {data:par,error}=await sb.from('parishes').select('id,name,prot,arh').eq('owner',session.user.id).maybeSingle();
+  if(!par&&!error){const m=session.user.user_metadata||{};
+    ({data:par,error}=await sb.from('parishes').insert({owner:session.user.id,name:m.parish||'Parohia',prot:m.prot||'',arh:m.arh||''}).select('id,name,prot,arh').single())}
   if(error||!par){setAuthMode('in');return authMsg('Nu s-a putut încărca parohia. '+(error?error.message:'Contul nu are parohie asociată.'))}
   const {data:rows,error:e2}=await sb.from('parish_data').select('key,value,updated_at').eq('parish_id',par.id);
   if(e2){setAuthMode('in');return authMsg('Nu s-au putut încărca datele: '+e2.message)}
@@ -279,6 +291,9 @@ async function loadParish(session){
 async function init(){
   setAuthMode('in');
   $b('tab-in').onclick=()=>setAuthMode('in');$b('tab-up').onclick=()=>setAuthMode('up');$b('au-forgot').onclick=()=>setAuthMode('forgot');
+  $b('au-resend').onclick=async()=>{const mail=$b('au-mail').value.trim();if(!mail||!sb)return authMsg('Introdu emailul.');
+    const {error}=await sb.auth.resend({type:'signup',email:mail,options:{emailRedirectTo:location.href.split('#')[0].split('?')[0]}});
+    error?authMsg(error.message):authMsg('Am retrimis emailul de confirmare. Verifică și folderul Spam.',true)};
   $b('form-auth').addEventListener('submit',async e=>{
     e.preventDefault();if(!sb)return authMsg(cfgErr||'Serverul nu este configurat (vezi SUPABASE_URL în fișier). Poți folosi modul vizitator.');
     const mail=$b('au-mail').value.trim(),pw=$b('au-pw').value,back=location.href.split('#')[0].split('?')[0];
@@ -294,11 +309,16 @@ async function init(){
         const pn=$b('au-par').value.trim();if(!pn)return authMsg('Introdu denumirea parohiei.');
         const {data,error}=await sb.auth.signUp({email:mail,password:pw,options:{emailRedirectTo:back,data:{parish:pn,prot:$b('au-prot').value.trim(),arh:$b('au-arh').value.trim()}}});
         if(error)return authMsg(error.message);
-        if(!data.session){setAuthMode('in');return authMsg('Cont creat. Verifică emailul pentru confirmare, apoi autentifică-te.',true)}
+        if(data.user&&data.user.identities&&data.user.identities.length===0)return authMsg('Există deja un cont cu acest email. Folosește „Autentificare” sau „Am uitat parola”.');
+        if(!data.session){setAuthMode('in');$b('au-resend').classList.remove('hidden');return authMsg('Cont creat. Verifică emailul pentru confirmare, apoi autentifică-te.',true)}
         return loadParish(data.session);
       }
       const {data,error}=await sb.auth.signInWithPassword({email:mail,password:pw});
-      if(error)return authMsg('Email sau parolă incorectă.');loadParish(data.session);
+      if(error){const m=(error.message||'').toLowerCase();
+        if(m.includes('not confirmed')){$b('au-resend').classList.remove('hidden');return authMsg('Emailul nu este confirmat încă. Deschide emailul primit de la Supabase (verifică și Spam) și apasă linkul de confirmare.')}
+        if(m.includes('invalid login'))return authMsg('Email sau parolă incorectă. Dacă tocmai ți-ai creat contul, confirmă mai întâi emailul.');
+        return authMsg(error.message)}
+      loadParish(data.session);
     }catch(x){authMsg('Eroare de conexiune: '+x.message)}
   });
   if(sessionStorage.getItem('pic_guest_on')){let d={};try{d=JSON.parse(sessionStorage.getItem('pic_guest'))||{}}catch(e){}
@@ -348,22 +368,142 @@ function render(){
   const c=bal('Casa'),b=bal('Banca');
   $('kpi-casa').textContent=fmt(c);$('kpi-banca').textContent=fmt(b);$('kpi-total').textContent=fmt(c+b);
   document.querySelectorAll('#acc-filter button').forEach(x=>{const on=x.dataset.acc===accFilter;x.className='px-3 py-1.5 rounded-md font-medium '+(on?'bg-white shadow-sm text-teal-800':'text-slate-600 hover:text-slate-900')});
-  const d1=$('d1').value,d2=$('d2').value,q=$('search').value.toLowerCase();
-  const rows=tx.filter(t=>(accFilter==='tot'||t.acc===accFilter)&&(!d1||t.date>=d1)&&(!d2||t.date<=d2)&&(!q||(t.expl+' '+t.nr+' '+t.tip).toLowerCase().includes(q)))
-    .sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
-  $('tbody').innerHTML=rows.length?rows.map(t=>`<tr class="hover:bg-slate-50">
-    <td class="py-3 px-4 text-slate-500">${dmy(t.date)}</td><td class="py-3 px-4 font-mono font-bold">${esc(t.nr)}</td>
-    <td class="py-3 px-4"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[11px]">${esc(t.tip)}</span></td>
-    <td class="py-3 px-4">${esc(t.expl)}</td><td class="py-3 px-4 text-center"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded">${t.acc}</span></td>
-    <td class="py-3 px-4 text-right text-emerald-700 font-semibold">${t.inc?fmt(t.inc):''}</td><td class="py-3 px-4 text-right text-rose-700 font-semibold">${t.plata?fmt(t.plata):''}</td>
-    <td class="py-3 px-4 text-center whitespace-nowrap"><button onclick="editTx(${t.id})" class="text-slate-400 hover:text-teal-600 mr-2" title="Editează"><i class="fa-solid fa-pen"></i></button><button onclick="delTx(${t.id})" class="text-slate-400 hover:text-rose-600" title="Șterge"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')
-    :'<tr><td colspan="8" class="py-8 text-center text-slate-400">Nicio înregistrare pentru filtrele alese. Adaugă o încasare sau o plată.</td></tr>';
-  const ti=rows.reduce((s,t)=>s+t.inc,0),tp=rows.reduce((s,t)=>s+t.plata,0);
-  $('tfoot').innerHTML=`<tr><td colspan="5" class="py-3 px-4 text-right">Total perioadă filtrată</td><td class="py-3 px-4 text-right text-emerald-700">${fmt(ti)}</td><td class="py-3 px-4 text-right text-rose-700">${fmt(tp)}</td><td></td></tr>`;
+  const d1=$('d1').value,d2=$('d2').value,q=$('search').value.toLowerCase(),pm=$('partial-mode').checked,okA=t=>accFilter==='tot'||t.acc===accFilter,inP=t=>(!d1||t.date>=d1)&&(!d2||t.date<=d2);
+  let run=tx.filter(t=>okA(t)&&d1&&t.date<d1).reduce((z,t)=>z+t.inc-t.plata,0);const sold={};
+  tx.filter(t=>okA(t)&&inP(t)).sort((x,y)=>x.date.localeCompare(y.date)||x.id-y.id).forEach(t=>{run+=t.inc-t.plata;sold[t.id]=run});
+  const rows=tx.filter(t=>okA(t)&&inP(t)&&(!q||(t.expl+' '+t.nr+' '+t.tip).toLowerCase().includes(q))).sort((x,y)=>y.date.localeCompare(x.date)||y.id-x.id);
+  shownIds=rows.map(t=>t.id);
+  document.querySelectorAll('.col-sold').forEach(e=>e.classList.toggle('hidden',!$('incl-sold').checked));document.querySelectorAll('.col-sel').forEach(e=>e.classList.toggle('hidden',!pm));
+  document.querySelectorAll('#per-filter button').forEach(x=>x.className='px-3 py-1.5 rounded-md font-medium '+(x.dataset.per===perMode?'bg-white shadow-sm text-teal-800':'text-slate-600'));
+  const cv=v=>v?fmt(v):'',cs=pm?'':' hidden',sd=$('incl-sold').checked?'':' hidden';
+  $('tbody').innerHTML=rows.length?rows.map(t=>{const ca=t.acc==='Casa',td='py-2 px-2 text-right font-semibold ';return `<tr class="hover:bg-slate-50"><td class="col-sel py-2 px-2${cs}"><input type="checkbox" ${sel.has(t.id)?'checked':''} onchange="toggleSel(${t.id},this.checked)"></td><td class="py-2 px-2 text-slate-500">${dmy(t.date)}</td>
+    <td class="py-2 px-2 font-mono font-bold text-emerald-700">${t.inc>0?esc(t.nr):''}</td><td class="py-2 px-2 font-mono font-bold text-rose-700">${t.plata>0?esc(t.nr):''}</td>
+    <td class="py-2 px-2"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[11px]">${esc(t.tip)}</span></td><td class="py-2 px-2">${esc(t.expl)}</td>
+    <td class="py-2 px-2 text-center">${t.acc}</td><td class="py-2 px-2 text-center">RON</td>
+    <td class="${td}text-emerald-700">${ca?cv(t.inc):''}</td><td class="${td}text-rose-700">${ca?cv(t.plata):''}</td><td class="${td}text-emerald-700">${ca?'':cv(t.inc)}</td><td class="${td}text-rose-700">${ca?'':cv(t.plata)}</td>
+    <td class="col-sold py-2 px-2 text-right font-semibold${sd}">${fmt(sold[t.id])}</td>
+    <td class="py-2 px-2 text-center whitespace-nowrap"><button onclick="editTx(${t.id})" class="text-slate-400 hover:text-teal-600 mr-2" title="Editează"><i class="fa-solid fa-pen"></i></button><button onclick="delTx(${t.id})" class="text-slate-400 hover:text-rose-600" title="Șterge"><i class="fa-solid fa-trash"></i></button></td></tr>`}).join('')
+    :'<tr><td colspan="14" class="py-8 text-center text-slate-400">Nicio înregistrare pentru filtrele alese. Adaugă o încasare sau o plată.</td></tr>';
+  const S=(f)=>rows.filter(f).reduce((z,t)=>z+t.inc+t.plata,0);
+  $('tfoot').innerHTML=`<tr><td class="col-sel${cs}"></td><td colspan="7" class="py-2 px-2 text-right">N= ${rows.length} • Total filtrat</td><td class="py-2 px-2 text-right text-emerald-700">${fmt(S(t=>t.acc==='Casa'&&t.inc>0))}</td><td class="py-2 px-2 text-right text-rose-700">${fmt(S(t=>t.acc==='Casa'&&t.plata>0))}</td><td class="py-2 px-2 text-right text-emerald-700">${fmt(S(t=>t.acc!=='Casa'&&t.inc>0))}</td><td class="py-2 px-2 text-right text-rose-700">${fmt(S(t=>t.acc!=='Casa'&&t.plata>0))}</td><td class="col-sold${sd}"></td><td></td></tr>`;
   renderStoc();renderLog();renderDocs();
 }
 function persist(){save('pic_tx2',tx);save('pic_stoc3',stoc);save('pic_log3',log);save('pic_docs2',docs);render()}
 
+let perMode='per',shownIds=[];const sel=new Set();
+function setPer(m){
+  perMode=m;const n=new Date(),y=n.getFullYear(),mo=n.getMonth(),f=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(m==='tot'){$('d1').value='';$('d2').value=''}
+  else if(m==='prev'){$('d1').value=f(new Date(y,mo-1,1));$('d2').value=f(new Date(y,mo,0))}
+  else if(m==='cur'){$('d1').value=f(new Date(y,mo,1));$('d2').value=f(new Date(y,mo+1,0))}
+  render();
+}
+function toggleSel(id,on){on?sel.add(id):sel.delete(id)}
+function selAll(on){shownIds.forEach(id=>on?sel.add(id):sel.delete(id));render()}
+function reportPartial(){
+  const rows=tx.filter(t=>sel.has(t.id)).sort((x,y)=>x.date.localeCompare(y.date)||x.id-y.id);
+  if(!rows.length)return alert('Bifează rândurile dorite în registru (activează opțiunea „Registru parțial”).');
+  const accs=new Set(rows.map(t=>t.acc)),first=rows[0].date,prev=tx.filter(t=>accs.has(t.acc)&&t.date<first).reduce((z,t)=>z+t.inc-t.plata,0);
+  let run=prev,ti=0,tp=0;
+  const trs=rows.map(t=>{run+=t.inc-t.plata;ti+=t.inc;tp+=t.plata;return `<tr><td>${dmy(t.date)}</td><td>${esc(t.nr)}</td><td>${esc(t.tip)}</td><td>${esc(t.expl)}</td><td>${t.acc}</td><td class="r">${t.inc?fmt(t.inc):''}</td><td class="r">${t.plata?fmt(t.plata):''}</td><td class="r">${fmt(run)}</td></tr>`}).join('');
+  printHTML('Registru partial',`<h3>Registru parțial (${[...accs].join(' + ')})</h3><h2>${rows.length} înregistrări selectate, începând cu ${dmy(first)}</h2>
+  <table><thead><tr><th>Data</th><th>Nr. doc</th><th>Tip</th><th>Explicația</th><th>Cont</th><th class="r">Încasări</th><th class="r">Plăți</th><th class="r">Sold</th></tr></thead><tbody>
+  <tr class="b"><td colspan="7">Sold anterior primei înregistrări</td><td class="r">${fmt(prev)}</td></tr>${trs}
+  <tr class="b"><td colspan="5">Total</td><td class="r">${fmt(ti)}</td><td class="r">${fmt(tp)}</td><td class="r">${fmt(run)}</td></tr></tbody></table>`);
+}
+const nrm=v=>String(v==null?'':v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+function splitCSV(l){const o=[];let c='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(ch==='"'){if(q&&l[i+1]==='"'){c+='"';i++}else q=!q}else if(ch===';'&&!q){o.push(c);c=''}else c+=ch}o.push(c);return o}
+function importFile(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader(),xl=/\.xlsx?$/i.test(f.name);
+  r.onload=()=>{
+    let arr;
+    try{
+      if(xl){if(!window.XLSX)throw new Error('biblioteca Excel nu s-a încărcat (verifică conexiunea la internet)');
+        const wb=XLSX.read(r.result,{type:'array'});arr=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''})}
+      else arr=String(r.result).replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim()).map(splitCSV);
+    }catch(e){alert('Nu am putut citi fișierul: '+e.message);return}
+    rowsToTx(arr);
+  };
+  xl?r.readAsArrayBuffer(f):r.readAsText(f);inp.value='';
+}
+function rowsToTx(arr){
+  const num=v=>{if(typeof v==='number')return v;v=String(v||'').trim().replace(/\s/g,'');if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');return parseFloat(v)||0};
+  const dt=v=>{if(v instanceof Date)return new Date(v.getTime()+43200000).toISOString().slice(0,10);
+    if(typeof v==='number'&&v>20000&&v<80000)return new Date(Math.round((v-25569)*86400000)).toISOString().slice(0,10);
+    v=String(v||'').trim();const m=v.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:(/^\d{4}-\d{2}-\d{2}/.test(v)?v.slice(0,10):'')};
+  const hi=arr.findIndex(r=>r.some(c=>nrm(c)==='data')),H=hi>=0?arr[hi].map(nrm):null,ix=f=>H?H.findIndex(f):-1;
+  let col={date:H?ix(h=>h==='data'):0,nr:ix(h=>/^nr\.? ?doc\.?$/.test(h)||h==='nr'),nrI:ix(h=>h.startsWith('nr')&&h.includes('incas')),nrP:ix(h=>h.startsWith('nr')&&h.includes('plat')),
+    tip:ix(h=>h.startsWith('tip doc')),expl:ix(h=>h.startsWith('explic')),cont:ix(h=>h==='cont'||h==='tip operatie'),
+    inc:ix(h=>h==='incasare'||h==='numerar incasari'),pl:ix(h=>h==='plata'||h==='numerar plati'),bi:ix(h=>h==='banca incasari'),bp:ix(h=>h==='banca plati')};
+  if(!H)col={date:0,nr:1,nrI:-1,nrP:-1,tip:2,expl:3,cont:4,inc:5,pl:6,bi:-1,bp:-1};
+  const g=(r,i)=>i>=0?r[i]:'',add=[];let bad=0,k=0;
+  arr.slice(H?hi+1:1).forEach(r=>{
+    const date=dt(g(r,col.date));if(!date){bad++;return}
+    const base={date,tip:String(g(r,col.tip)||'').trim()||'Chitanță',expl:String(g(r,col.expl)).trim()},cb=/banc/i.test(String(g(r,col.cont))),n0=add.length;
+    const push=(acc,inc,plata,nr)=>{if(inc||plata)add.push({...base,id:Date.now()+(k++),nr:String(nr||'').trim(),acc,inc,plata})};
+    const nrI=col.nrI>=0?g(r,col.nrI):g(r,col.nr),nrP=col.nrP>=0?g(r,col.nrP):g(r,col.nr),i=num(g(r,col.inc)),p=num(g(r,col.pl));
+    if(col.bi>=0||col.bp>=0){push('Casa',i,0,nrI);push('Casa',0,p,nrP);push('Banca',num(g(r,col.bi)),0,nrI);push('Banca',0,num(g(r,col.bp)),nrP)}
+    else{const a=cb?'Banca':'Casa';push(a,i,0,nrI);push(a,0,p,nrP)}
+    if(add.length===n0)bad++;
+  });
+  if(!add.length){alert('Nu am găsit rânduri valide. Prima linie trebuie să conțină antetul (Data, Nr. doc, Tip document, Explicația, Cont, Încasare, Plată) sau coloanele din exportul programului vechi.');return}
+  if(!confirm(`Import ${add.length} înregistrări${bad?` (${bad} rânduri ignorate: fără dată sau fără sumă)`:''}?`))return;
+  tx=tx.concat(add);persist();
+}
+/* ---------- Export Excel (.xlsx) ---------- */
+const serD=d=>{const[a,b,c]=d.split('-').map(Number);return Date.UTC(a,b-1,c)/864e5+25569};
+const nnum=v=>/^\d+$/.test(String(v))?+v:v;
+function xlsxSave(file,sheets){
+  if(!window.XLSX)return alert('Biblioteca Excel nu s-a încărcat (verifică conexiunea la internet).');
+  const wb=XLSX.utils.book_new();
+  sheets.forEach(sh=>{
+    const ws=XLSX.utils.aoa_to_sheet([sh.head,...sh.rows]);ws['!cols']=sh.widths.map(w=>({wch:w}));
+    const rg=XLSX.utils.decode_range(ws['!ref']);
+    for(let R=1;R<=rg.e.r;R++){(sh.money||[]).forEach(C=>{const c=ws[XLSX.utils.encode_cell({r:R,c:C})];if(c&&c.t==='n')c.z='#,##0.00'});(sh.dates||[]).forEach(C=>{const c=ws[XLSX.utils.encode_cell({r:R,c:C})];if(c&&c.t==='n')c.z='dd.mm.yyyy'})}
+    ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,rg.e.r-(sh.footer?1:0)),c:rg.e.c}})};
+    XLSX.utils.book_append_sheet(wb,ws,sh.name);
+  });
+  XLSX.writeFile(wb,file+'.xlsx');
+}
+function exportXlsx(kind){
+  const asc=(x,y)=>x.date.localeCompare(y.date)||x.id-y.id,td=today();
+  if(kind==='registru'){
+    const d1=$('d1').value,d2=$('d2').value,q=$('search').value.toLowerCase(),ok=t=>accFilter==='tot'||t.acc===accFilter,inP=t=>(!d1||t.date>=d1)&&(!d2||t.date<=d2);
+    let run=tx.filter(t=>ok(t)&&d1&&t.date<d1).reduce((z,t)=>z+t.inc-t.plata,0);const sold={};
+    tx.filter(t=>ok(t)&&inP(t)).sort(asc).forEach(t=>{run+=t.inc-t.plata;sold[t.id]=run});
+    const rows=tx.filter(t=>ok(t)&&inP(t)&&(!q||(t.expl+' '+t.nr+' '+t.tip).toLowerCase().includes(q))).sort(asc);
+    const body=rows.map(t=>{const ca=t.acc==='Casa';return[serD(t.date),t.inc>0?nnum(t.nr):'',t.plata>0?nnum(t.nr):'',t.tip,t.expl,t.acc,'RON',ca&&t.inc?t.inc:'',ca&&t.plata?t.plata:'',!ca&&t.inc?t.inc:'',!ca&&t.plata?t.plata:'',sold[t.id]]});
+    const S=f=>rows.filter(f).reduce((z,t)=>z+t.inc+t.plata,0),bal=a=>tx.filter(t=>t.acc===a).reduce((z,t)=>z+t.inc-t.plata,0);
+    body.push(['TOTAL','','','',`N= ${rows.length}`,'','',S(t=>t.acc==='Casa'&&t.inc>0),S(t=>t.acc==='Casa'&&t.plata>0),S(t=>t.acc!=='Casa'&&t.inc>0),S(t=>t.acc!=='Casa'&&t.plata>0),'']);
+    xlsxSave('registru-casa-banca-'+td,[
+      {name:'Registru',head:['Data','Nr. doc. încasare','Nr. doc. plată','Tip document','Explicația','Tip operație','Valută','Numerar încasări','Numerar plăți','Bancă încasări','Bancă plăți','Sold'],rows:body,widths:[11,16,14,14,50,12,8,16,14,16,14,14],money:[7,8,9,10,11],dates:[0],footer:true},
+      {name:'Rezumat',head:['Element','Valoare'],rows:[['Parohia',PAR.name],['Perioada',(d1?dmy(d1):'început')+' – '+(d2?dmy(d2):'prezent')],['Sold casă (total)',bal('Casa')],['Sold bancă (total)',bal('Banca')],['Sold total',bal('Casa')+bal('Banca')]],widths:[22,40],money:[1]}]);
+  }else if(kind==='stoc'){
+    const {rows,D}=stocRows();
+    xlsxSave('stoc-pangar-'+D,[{name:'Stoc pangar',head:['Produs','U.M.','Stoc inițial','Intrări','Ieșiri','Stoc','Adaos parohie','Preț protoierie','Valoare protoierie'],
+      rows:rows.map(({s,ini,inn,out,q})=>[s.name,s.um,ini,inn,out,q,s.adaos||0,s.pret||0,r2(q*(s.pret||0))]),widths:[28,8,12,10,10,10,14,16,18],money:[6,7,8]}]);
+  }else if(kind==='pangar'){
+    xlsxSave('registru-pangar-'+td,[{name:'Registru pangar',head:['Data','Nr. doc','Articol','U.M.','Tip','Cantitate','Explicația'],
+      rows:logRows().reverse().map(l=>{const it=itemOf(l.item);return[serD(l.date),nnum(l.doc),it.name,it.um,l.type,l.qty,l.expl]}),widths:[11,10,28,8,10,12,36],dates:[0]}]);
+  }else{
+    const ds=docs.filter(d=>d.kind===KD[docKind]).sort(asc),ch=docKind==='chitante',nm={facturi:'Facturi intrări',chitante:'Chitanțe ieșiri',bonuri:'Bonuri de consum'}[docKind];
+    xlsxSave(nrm(nm).replace(/[^a-z]+/g,'-')+'-'+td,[
+      {name:nm,head:['Nr. doc','Serie','Data','Produse','Cantitate','Val. protoierie','Adaos parohie','Val. totală','Stare'],
+        rows:ds.map(d=>{const v=d.pending?d.val:dv(d),a=da(d);return[nnum(d.nr),d.serie||'',serD(d.date),d.pending?d.produse:d.lines.map(l=>itemOf(l.item).name).join(', '),d.lines.reduce((z,l)=>z+l.qty,0),v,a,ch?r2(v+a):v,d.pending?'Nerecepționată':(docKind==='facturi'?'Recepționată':'')]}),widths:[10,8,11,50,11,16,14,14,16],money:[5,6,7],dates:[2]},
+      {name:'Linii produse',head:['Nr. doc','Data','Produs','U.M.','Cantitate','Preț protoierie','Adaos parohie','Valoare'],
+        rows:ds.flatMap(d=>d.lines.map(l=>{const it=itemOf(l.item);return[nnum(d.nr),serD(d.date),it.name,it.um,l.qty,l.pret,l.adaos||0,r2(l.qty*(l.pret+(l.adaos||0)))]})),widths:[10,11,28,8,11,16,14,14],money:[5,6,7],dates:[1]}]);
+  }
+}
+function reportDocs(){
+  const rows=docs.filter(d=>d.kind===KD[docKind]).sort((x,y)=>x.date.localeCompare(y.date)||x.id-y.id),ch=docKind==='chitante';let sq=0,sv=0,sa=0;
+  const trs=rows.map(d=>{const v=d.pending?d.val:dv(d),a=da(d),q=d.lines.reduce((z,l)=>z+l.qty,0);sq+=q;sv+=v;sa+=a;
+    return `<tr><td>${esc((d.serie?d.serie+' ':'')+d.nr)}</td><td>${dmy(d.date)}</td><td>${d.pending?esc(d.produse):esc(d.lines.map(l=>itemOf(l.item).name+' '+l.qty).join(', '))}</td><td class="r">${q||''}</td><td class="r">${fmt(v)}</td><td class="r">${a?fmt(a):''}</td><td class="r">${fmt(ch?v+a:v)}</td></tr>`}).join('');
+  printHTML(KN[docKind],`<h3>${KN[docKind]}</h3><table><thead><tr><th>Nr. doc</th><th>Data</th><th>Produse</th><th class="r">Cantitate</th><th class="r">Val. protoierie</th><th class="r">Adaos parohie</th><th class="r">Val. totală</th></tr></thead><tbody>${trs||'<tr><td colspan="7">Niciun document.</td></tr>'}
+  <tr class="b"><td colspan="3">Total (${rows.length} documente)</td><td class="r">${sq}</td><td class="r">${fmt(sv)}</td><td class="r">${fmt(sa)}</td><td class="r">${fmt(ch?sv+sa:sv)}</td></tr></tbody></table>`);
+}
+$('per-filter').onclick=e=>{const m=e.target.dataset.per;if(m)setPer(m)};
+['d1','d2'].forEach(i=>$(i).addEventListener('change',()=>{perMode='per';render()}));
+['incl-sold','partial-mode'].forEach(i=>$(i).addEventListener('change',render));
 function openModal(m){
   mode=m;editId=null;$('f-acc').disabled=false;$('m-title').textContent=TITLES[m];
   $('f-date').value=new Date().toISOString().slice(0,10);
