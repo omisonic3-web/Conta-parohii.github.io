@@ -243,9 +243,12 @@ tailwind.config={theme:{extend:{colors:{brand:{dark:'#0f2332',header:'#1e3a5f'}}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* === CONFIGURARE: completează cu datele proiectului tău Supabase === */
-const SUPABASE_URL='pharunhnydporybhhced.supabase.co', SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoYXJ1bmhueWRwb3J5YmhoY2VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0ODk0MzYsImV4cCI6MjEwODA2NTQzNn0.5gYV0MULQojJzo4UhJ_wMiUKJamXBLq5qmEGABX7uZA';
+const SUPABASE_URL='https://pharunhnydporybhhced.supabase.co', SUPABASE_KEY='sb_publishable_ky-_1D43bp9zmJpKlKlLxg_JKJYABnE';
 /* =================================================================== */
-const sb=(window.supabase&&!SUPABASE_URL.includes('YOUR-'))?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+let sb=null,cfgErr='';
+try{if(!window.supabase)cfgErr='Biblioteca Supabase nu s-a încărcat (verifică conexiunea la internet).';
+  else if(!SUPABASE_URL.includes('YOUR-'))sb=window.supabase.createClient(SUPABASE_URL.trim(),SUPABASE_KEY.trim())}
+catch(e){cfgErr='Configurare Supabase invalidă: '+e.message+' — verifică SUPABASE_URL (de forma https://xxxx.supabase.co) și cheia anon.'}
 const $b=id=>document.getElementById(id);
 let authMode='in';
 function setAuthMode(m){
@@ -274,9 +277,10 @@ async function loadParish(session){
   runApp(par,data,session.user.email,false);
 }
 async function init(){
+  setAuthMode('in');
   $b('tab-in').onclick=()=>setAuthMode('in');$b('tab-up').onclick=()=>setAuthMode('up');$b('au-forgot').onclick=()=>setAuthMode('forgot');
   $b('form-auth').addEventListener('submit',async e=>{
-    e.preventDefault();if(!sb)return authMsg('Serverul nu este configurat (vezi SUPABASE_URL în fișier). Poți folosi modul vizitator.');
+    e.preventDefault();if(!sb)return authMsg(cfgErr||'Serverul nu este configurat (vezi SUPABASE_URL în fișier). Poți folosi modul vizitator.');
     const mail=$b('au-mail').value.trim(),pw=$b('au-pw').value,back=location.href.split('#')[0].split('?')[0];
     try{
       if(authMode==='forgot'){if(!mail)return authMsg('Introdu emailul.');const {error}=await sb.auth.resetPasswordForEmail(mail,{redirectTo:back});
@@ -299,13 +303,13 @@ async function init(){
   });
   if(sessionStorage.getItem('pic_guest_on')){let d={};try{d=JSON.parse(sessionStorage.getItem('pic_guest'))||{}}catch(e){}
     return runApp({id:'g',name:'Parohie (vizitator)',prot:'',arh:''},d,'Vizitator',true)}
-  setAuthMode('in');
-  if(!sb)return authMsg('Serverul nu este configurat încă (vezi SUPABASE_URL în fișier). Deocamdată poți folosi modul vizitator.');
+  if(!sb)return authMsg(cfgErr||'Serverul nu este configurat încă (vezi SUPABASE_URL în fișier). Deocamdată poți folosi modul vizitator.');
   if(location.hash.includes('type=recovery')){setAuthMode('newpw');return}
   sb.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY')setAuthMode('newpw')});
   const {data:{session}}=await sb.auth.getSession();if(session)loadParish(session);
 }
-document.addEventListener('DOMContentLoaded',init);
+const start=()=>init().catch(e=>{try{authMsg('Eroare la pornire: '+e.message)}catch(x){}});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 </script>
 <script type="text/plain" id="app-src">
 const $=id=>document.getElementById(id);
