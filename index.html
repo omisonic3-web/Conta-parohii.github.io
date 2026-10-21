@@ -272,6 +272,7 @@ function setAuthMode(m){
   $b('tab-in').className=on(m==='in'||m==='forgot'||m==='newpw');$b('tab-up').className=on(m==='up');
 }
 function authMsg(t,ok){const e=$b(ok?'au-ok':'au-err');$b('au-err').classList.add('hidden');$b('au-ok').classList.add('hidden');e.textContent=t;e.classList.remove('hidden')}
+function clearSb(){try{Object.keys(localStorage).filter(k=>k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 function guestLogin(){sessionStorage.setItem('pic_guest_on','1');location.reload()}
 function runApp(par,data,email,guest){
   window.__PAR=par;window.__DATA=data;window.__EMAIL=email;window.__GUEST=guest;
@@ -279,6 +280,7 @@ function runApp(par,data,email,guest){
   const el=document.createElement('script');el.text=$b('app-src').textContent;document.body.appendChild(el);
 }
 async function loadParish(session){
+  try{localStorage.removeItem('pic_out')}catch(e){}
   let {data:par,error}=await sb.from('parishes').select('id,name,prot,arh').eq('owner',session.user.id).maybeSingle();
   if(!par&&!error){const m=session.user.user_metadata||{};
     ({data:par,error}=await sb.from('parishes').insert({owner:session.user.id,name:m.parish||'Parohia',prot:m.prot||'',arh:m.arh||''}).select('id,name,prot,arh').single())}
@@ -325,6 +327,7 @@ async function init(){
     return runApp({id:'g',name:'Parohie (vizitator)',prot:'',arh:''},d,'Vizitator',true)}
   if(!sb)return authMsg(cfgErr||'Serverul nu este configurat încă (vezi SUPABASE_URL în fișier). Deocamdată poți folosi modul vizitator.');
   if(location.hash.includes('type=recovery')){setAuthMode('newpw');return}
+  if(localStorage.getItem('pic_out')){clearSb();try{await sb.auth.signOut({scope:'local'})}catch(e){}clearSb();return}
   sb.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY')setAuthMode('newpw')});
   const {data:{session}}=await sb.auth.getSession();if(session)loadParish(session);
 }
@@ -739,7 +742,7 @@ async function resetAll(){if(!confirm('Ștergi toate datele acestei parohii?'))r
 /* ---------- Sesiune ---------- */
 async function logout(){
   if(GUEST){if(!confirm('Datele din modul vizitator vor fi șterse. Continui?'))return;sessionStorage.removeItem('pic_guest');sessionStorage.removeItem('pic_guest_on')}
-  else{if(Object.keys(pending).length)await flush();await sb.auth.signOut()}
+  else{if(Object.keys(pending).length)await flush();localStorage.setItem('pic_out','1');try{await sb.auth.signOut({scope:'local'})}catch(e){}clearSb()}
   location.reload();
 }
 async function editParish(){
